@@ -6,9 +6,14 @@ import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { VENDOR_STATUS_COLORS, VENDOR_STATUS_LABELS } from "@/lib/constants";
+import {
+  STATUS_COLORS,
+  STATUS_LABELS,
+  VENDOR_STATUS_COLORS,
+  VENDOR_STATUS_LABELS,
+} from "@/lib/constants";
 import { formatDateTime } from "@/lib/utils";
-import type { VendorTransaction } from "@/lib/database.types";
+import type { Transaction, VendorTransaction } from "@/lib/database.types";
 
 export const metadata: Metadata = { title: "CaterLink" };
 export const dynamic = "force-dynamic";
@@ -24,13 +29,20 @@ export default async function HomePage() {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
-  const { data } = await supabase
-    .from("vendor_transactions")
-    .select("*")
-    .gte("created_at", startOfToday.toISOString())
-    .order("created_at", { ascending: false });
+  const isIfc = profile.role === "driver_ifc";
+  const { data } = isIfc
+    ? await supabase
+        .from("transactions")
+        .select("*")
+        .gte("created_at", startOfToday.toISOString())
+        .order("created_at", { ascending: false })
+    : await supabase
+        .from("vendor_transactions")
+        .select("*")
+        .gte("created_at", startOfToday.toISOString())
+        .order("created_at", { ascending: false });
 
-  const transactions = (data ?? []) as VendorTransaction[];
+  const transactions = (data ?? []) as (Transaction | VendorTransaction)[];
 
   return (
     <div className="space-y-6">
@@ -58,9 +70,15 @@ export default async function HomePage() {
                       <p className="font-mono text-sm font-semibold">{t.transaction_number}</p>
                       <p className="text-xs text-muted-foreground">{formatDateTime(t.created_at)}</p>
                     </div>
-                    <Badge className={VENDOR_STATUS_COLORS[t.status]}>
-                      {VENDOR_STATUS_LABELS[t.status]}
-                    </Badge>
+                    {isIfc ? (
+                      <Badge className={STATUS_COLORS[(t as Transaction).status]}>
+                        {STATUS_LABELS[(t as Transaction).status]}
+                      </Badge>
+                    ) : (
+                      <Badge className={VENDOR_STATUS_COLORS[(t as VendorTransaction).status]}>
+                        {VENDOR_STATUS_LABELS[(t as VendorTransaction).status]}
+                      </Badge>
+                    )}
                   </CardContent>
                 </Card>
               </Link>

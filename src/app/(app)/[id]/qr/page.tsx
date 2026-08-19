@@ -6,19 +6,24 @@ import { createClient } from "@/lib/supabase/server";
 import { generateQrToken } from "@/lib/qr-token";
 import { QrDisplay } from "@/components/qr-display";
 import { Button } from "@/components/ui/button";
-import type { VendorTransaction } from "@/lib/database.types";
+import type { Transaction, VendorTransaction } from "@/lib/database.types";
 
 export const metadata: Metadata = { title: "QR Pass — CaterLink" };
 export const dynamic = "force-dynamic";
 
 export default async function QrPassPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await requireProfile();
+  const profile = await requireProfile();
+  const isIfc = profile.role === "driver_ifc";
 
   const supabase = await createClient();
-  const { data } = await supabase.from("vendor_transactions").select("*").eq("id", id).single();
+  const { data } = await supabase
+    .from(isIfc ? "transactions" : "vendor_transactions")
+    .select("id, transaction_number")
+    .eq("id", id)
+    .single();
   if (!data) notFound();
-  const transaction = data as VendorTransaction;
+  const transaction = data as Pick<Transaction | VendorTransaction, "id" | "transaction_number">;
 
   return (
     <div className="mx-auto flex max-w-md flex-col items-center gap-6 py-8 text-center">
@@ -30,7 +35,7 @@ export default async function QrPassPage({ params }: { params: Promise<{ id: str
       </div>
 
       <QrDisplay
-        token={generateQrToken(transaction.id, "VENDOR")}
+        token={generateQrToken(transaction.id, isIfc ? "CATERING" : "VENDOR")}
         transactionNumber={transaction.transaction_number}
         size={280}
       />
