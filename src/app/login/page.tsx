@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LoginTabs } from "./login-tabs";
+import { PinDriverLoginForm } from "./pin-driver-login-form";
 
 export const metadata: Metadata = { title: "Sign in — CaterLink" };
 export const dynamic = "force-dynamic";
@@ -26,7 +26,7 @@ export default async function LoginPage({
       <div className="w-full max-w-sm space-y-6">
         <div className="space-y-1 text-center">
           <h1 className="font-heading text-3xl font-bold tracking-tight">CaterLink</h1>
-          <p className="text-sm text-muted-foreground">Driver sign-in — Vendor Movement Module</p>
+          <p className="text-sm text-muted-foreground">Driver sign-in</p>
         </div>
 
         {error ? (
@@ -40,12 +40,17 @@ export default async function LoginPage({
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Sign in</CardTitle>
+            <CardTitle className="text-base">Sign in with your Driver Code</CardTitle>
           </CardHeader>
           <CardContent>
-            <LoginTabs />
+            <PinDriverLoginForm />
           </CardContent>
         </Card>
+
+        <p className="text-center text-xs text-muted-foreground">
+          Both IFC and vendor drivers sign in with a Driver Code + PIN for now. AirAsia staff
+          Google Sign-In is coming soon — ask your admin for a Driver Code in the meantime.
+        </p>
       </div>
     </div>
   );

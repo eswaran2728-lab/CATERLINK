@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { setVendorDriverActive } from "@/lib/actions/vendor-driver-auth";
+import { setVendorDriverActive } from "@/lib/actions/pin-driver-auth";
 import { Button } from "@/components/ui/button";
 
 export function ToggleActiveButton({ driverId, isActive }: { driverId: string; isActive: boolean }) {

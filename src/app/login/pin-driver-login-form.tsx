@@ -1,15 +1,21 @@
 "use client";
 
 import { useActionState } from "react";
-import { loginVendorDriver, type ActionState } from "@/lib/actions/vendor-driver-auth";
+import { loginPinDriver, type ActionState } from "@/lib/actions/pin-driver-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 const initialState: ActionState = { error: null };
 
-export function VendorDriverLoginForm() {
-  const [state, formAction, pending] = useActionState(loginVendorDriver, initialState);
+/**
+ * Driver Code + PIN login — used by vendor drivers permanently, and by
+ * IFC drivers temporarily until Google Workspace SSO is configured (see
+ * pin-driver-auth.ts). One driver code space, both prefixes (V-/I-)
+ * work here.
+ */
+export function PinDriverLoginForm() {
+  const [state, formAction, pending] = useActionState(loginPinDriver, initialState);
 
   return (
     <form action={formAction} className="space-y-4">
@@ -18,7 +24,7 @@ export function VendorDriverLoginForm() {
         <Input
           id="driver_code"
           name="driver_code"
-          placeholder="V-0001"
+          placeholder="V-0001 or I-0001"
           className="font-mono uppercase"
           autoCapitalize="characters"
           required

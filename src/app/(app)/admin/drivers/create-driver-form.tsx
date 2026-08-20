@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { createVendorDriver, type ActionState } from "@/lib/actions/vendor-driver-auth";
+import { createVendorDriver, type ActionState } from "@/lib/actions/pin-driver-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

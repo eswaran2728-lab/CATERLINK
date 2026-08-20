@@ -1,5 +1,10 @@
 "use client";
 
+// Not wired into /login yet — Google OAuth isn't configured in Supabase.
+// IFC drivers use the Driver Code + PIN form (pin-driver-login-form.tsx)
+// in the meantime. Once the Google provider + redirect URLs are set up,
+// swap this back in for driver_ifc and drop the temporary PIN path.
+
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";

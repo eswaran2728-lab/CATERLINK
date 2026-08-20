@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { VendorDriver } from "@/lib/database.types";
+import type { PinDriver } from "@/lib/database.types";
 import { CreateDriverForm } from "./create-driver-form";
 import { ToggleActiveButton } from "./toggle-active-button";
 
@@ -28,11 +28,11 @@ export default async function DriversPage({
 
   const supabase = await createClient();
   const { data } = await supabase
-    .from("vendor_drivers")
+    .from("pin_drivers")
     .select("*")
     .eq("vendor_id", profile.id)
     .order("created_at", { ascending: false });
-  const drivers = (data ?? []) as VendorDriver[];
+  const drivers = (data ?? []) as PinDriver[];
 
   return (
     <div className="space-y-4">

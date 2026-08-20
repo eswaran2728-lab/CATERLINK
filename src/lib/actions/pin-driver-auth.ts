@@ -6,7 +6,7 @@ import bcrypt from "bcryptjs";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/auth";
-import type { VendorDriver } from "@/lib/database.types";
+import type { PinDriver } from "@/lib/database.types";
 
 export interface ActionState {
   error: string | null;
@@ -16,9 +16,10 @@ const PIN_RE = /^\d{4}$/;
 const MAX_PIN_ATTEMPTS = 5;
 const LOCK_MINUTES = 15;
 
-/** Every vendor driver's Supabase Auth user lives under this fake domain — see the migration. */
-function internalEmail(driverCode: string): string {
-  return `${driverCode.toLowerCase()}@vendor.caterlink.internal`;
+/** Every PIN driver's Supabase Auth user lives under a fake domain keyed by role — see the migration. */
+function internalEmail(driverCode: string, role: "driver_ifc" | "driver_vendor"): string {
+  const domain = role === "driver_ifc" ? "ifc.caterlink.internal" : "vendor.caterlink.internal";
+  return `${driverCode.toLowerCase()}@${domain}`;
 }
 
 function str(formData: FormData, key: string): string {
@@ -26,17 +27,16 @@ function str(formData: FormData, key: string): string {
 }
 
 /**
- * Driver Code + PIN login for third-party vendor drivers (no email).
- * Verifies the PIN with the service-role client (no session exists yet),
- * rate-limits attempts, then mints a real passwordless Supabase Auth
- * session for the driver's own auth.users row via a magic-link OTP
- * exchange — so auth.uid() and RLS work exactly like any other signed-in
- * user from here on.
+ * Driver Code + PIN login, shared by vendor drivers (permanent — no
+ * email available) and IFC drivers (temporary stand-in until Google
+ * Workspace SSO is configured; see scripts/create-ifc-driver.mjs).
+ * Verifies the PIN with the service-role client (no session exists
+ * yet), rate-limits attempts, then mints a real passwordless Supabase
+ * Auth session via a magic-link OTP exchange — so auth.uid() and RLS
+ * work exactly like any other signed-in user from here on, regardless
+ * of which role the Driver Code belongs to.
  */
-export async function loginVendorDriver(
-  _prev: ActionState,
-  formData: FormData
-): Promise<ActionState> {
+export async function loginPinDriver(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const driverCode = str(formData, "driver_code").toUpperCase();
   const pin = str(formData, "pin");
 
@@ -45,7 +45,7 @@ export async function loginVendorDriver(
 
   const admin = createAdminClient();
   const { data: driver } = await admin
-    .from("vendor_drivers")
+    .from("pin_drivers")
     .select("*")
     .eq("driver_code", driverCode)
     .maybeSingle();
@@ -53,10 +53,10 @@ export async function loginVendorDriver(
   if (!driver) {
     return { error: "Driver Code not found. / Kod Pemandu tidak dijumpai." };
   }
-  const d = driver as VendorDriver;
+  const d = driver as PinDriver;
 
   if (!d.is_active) {
-    return { error: "This driver account has been deactivated. Contact your vendor admin." };
+    return { error: "This driver account has been deactivated. Contact your admin." };
   }
 
   if (d.locked_until && new Date(d.locked_until) > new Date()) {
@@ -69,12 +69,10 @@ export async function loginVendorDriver(
     const attempts = d.failed_pin_attempts + 1;
     const lockedOut = attempts >= MAX_PIN_ATTEMPTS;
     await admin
-      .from("vendor_drivers")
+      .from("pin_drivers")
       .update({
         failed_pin_attempts: lockedOut ? 0 : attempts,
-        locked_until: lockedOut
-          ? new Date(Date.now() + LOCK_MINUTES * 60_000).toISOString()
-          : null,
+        locked_until: lockedOut ? new Date(Date.now() + LOCK_MINUTES * 60_000).toISOString() : null,
       })
       .eq("id", d.id);
 
@@ -84,13 +82,10 @@ export async function loginVendorDriver(
   }
 
   if (d.failed_pin_attempts > 0 || d.locked_until) {
-    await admin
-      .from("vendor_drivers")
-      .update({ failed_pin_attempts: 0, locked_until: null })
-      .eq("id", d.id);
+    await admin.from("pin_drivers").update({ failed_pin_attempts: 0, locked_until: null }).eq("id", d.id);
   }
 
-  const email = internalEmail(d.driver_code);
+  const email = internalEmail(d.driver_code, d.driver_role);
   const { data: link, error: linkError } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email,
@@ -113,17 +108,14 @@ export async function loginVendorDriver(
 }
 
 /**
- * Vendor-admin ('vendor' role) registers a new driver: creates the
- * driver's passwordless Supabase Auth user, their public.users profile
- * (role driver_vendor), and the vendor_drivers row with the PIN the
- * admin chose (hashed, never stored in plaintext). The Driver Code is
- * generated server-side; hand it to the driver out of band along with
- * the PIN.
+ * Vendor-admin ('vendor' role) registers a new vendor driver: creates
+ * the driver's passwordless Supabase Auth user, their public.users
+ * profile (role driver_vendor), and the pin_drivers row with the PIN
+ * the admin chose (hashed, never stored in plaintext). The Driver Code
+ * is generated server-side; hand it to the driver out of band along
+ * with the PIN.
  */
-export async function createVendorDriver(
-  _prev: ActionState,
-  formData: FormData
-): Promise<ActionState> {
+export async function createVendorDriver(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const profile = await requireRole(["vendor"]);
 
   const fullName = str(formData, "full_name");
@@ -141,12 +133,14 @@ export async function createVendorDriver(
 
   const admin = createAdminClient();
 
-  const { data: codeData, error: codeError } = await admin.rpc("next_driver_code");
+  const { data: codeData, error: codeError } = await admin.rpc("next_driver_code", {
+    p_role: "driver_vendor",
+  });
   if (codeError || !codeData) {
     return { error: `Could not generate a Driver Code: ${codeError?.message ?? "unknown error"}` };
   }
   const driverCode = codeData as string;
-  const email = internalEmail(driverCode);
+  const email = internalEmail(driverCode, "driver_vendor");
 
   const { data: authUser, error: authError } = await admin.auth.admin.createUser({
     email,
@@ -172,13 +166,15 @@ export async function createVendorDriver(
   }
 
   const pinHash = await bcrypt.hash(pin, 10);
-  const { error: driverError } = await admin.from("vendor_drivers").insert({
+  const { error: driverError } = await admin.from("pin_drivers").insert({
     id: authUser.user.id,
+    driver_role: "driver_vendor",
     vendor_id: profile.id,
     driver_code: driverCode,
     pin_hash: pinHash,
     full_name: fullName,
     ic_number: icNumber,
+    staff_id: null,
     phone: phone || null,
     vehicle_plate: vehiclePlate || null,
   });
@@ -197,7 +193,7 @@ export async function setVendorDriverActive(driverId: string, isActive: boolean)
   const supabase = await createClient();
 
   const { error } = await supabase
-    .from("vendor_drivers")
+    .from("pin_drivers")
     .update({ is_active: isActive })
     .eq("id", driverId)
     .eq("vendor_id", profile.id);
