@@ -29,12 +29,18 @@
 -- only as the admin account that registers driver_vendor rows.
 -- ============================================================
 
+-- The live users_role_check array is wider than icms-airasia's GitHub
+-- repo shows (it already includes 'management'/'ops_staff', added by a
+-- migration not present in that repo checkout) — reproduced verbatim
+-- here, plus the two new CaterLink roles, rather than the stale list
+-- from the repo, so this ALTER doesn't drop roles already in use.
 alter table public.users drop constraint users_role_check;
 alter table public.users
   add constraint users_role_check
   check (role = any (array[
     'warehouse_pic', 'post2_avsec', 'post6_avsec', 'receiver',
     'supervisor', 'enforcement', 'vendor', 'hub_avsec', 'redq_avsec',
+    'management', 'ops_staff',
     'driver_ifc', 'driver_vendor'
   ]));
 
