@@ -1,104 +1,104 @@
 # CaterLink
 
-Driver-facing app that only ever **generates** QR codes for two ICMS
-movement types — it never scans them. AVSEC/warehouse staff scan the QR in
-the separate **VECTA** app and continue the same downstream verification
-workflow that already exists there; only the QR-creation step has moved
-out of VECTA and into CaterLink.
+CaterLink creates transactions and generates QR codes; **VECTA** is where
+AVSEC scans them at physical checkpoints (Post 2, Post 6, REDQ, Hub,
+Receiver) to process security clearance. A transaction starts in
+CaterLink, crosses into VECTA for checkpoint scanning as it physically
+moves, and returns to CaterLink one final time at whichever checkpoint
+is its actual last stop — where it's signed off and both parties get a
+completion PDF.
 
-1. **Vendor movement Part A** (form AA/SEC/F/019) — vendor drivers.
-2. **ICMS inbound/outbound Part A** — AirAsia's own IFC catering drivers.
-   Writes to the same `transactions`/`part_a`/`seals` tables VECTA's
-   existing Part B/C/D verification flow already reads — same whitelist
-   enforcement, same seal/cargo-type requirements, ported from
-   `icms-airasia`'s `createTransaction`.
+Built independently of VECTA — no VECTA code or tables are reused.
+CaterLink shares the same Supabase project (so both apps can see the
+same transaction and the same user accounts) but has its own fresh
+tables (`cl_transactions`, `cl_seals`, `cl_signoffs`), not
+icms-airasia's `transactions`/`vendor_transactions`/`part_a`/`seals`,
+which VECTA keeps using unchanged for its own workflow.
 
-CaterLink and VECTA are separate Next.js deployments pointed at the same
-Supabase project — no sync layer, they share tables directly. The
-`QR_TOKEN_SECRET` env var must be byte-identical between the two apps or
-QR scans fail signature verification (see `src/lib/qr-token.ts`).
+**The QR payload format is provisional** — not yet agreed with VECTA's
+team. See `docs/qr-payload-proposal.md`, which is the document to hand
+them before treating this as final.
 
-## Who uses this
+## Roles (no new roles — reuses existing VECTA accounts directly)
 
-Both driver types **self-register** on `/register` with whatever email
-they already use — no domain restriction, no admin-issued codes. This is
-icms-airasia's existing pattern (`src/lib/actions/registration.ts`,
-ported): a real Supabase Auth account is created immediately, but the
-profile starts `status='pending'` and can't sign in
-(`src/lib/actions/auth-session.ts`'s `signIn`) until a **VECTA admin**
-(`supervisor` role) approves it from **VECTA's own admin panel** — there
-is no separate approval screen in CaterLink.
+- **`warehouse_pic`** — creates the standard/aircraft/hub/REDQ/
+  maintenance/inbound transaction (the "IFC AVSEC Staff" creator role
+  in the handoff spec). Same account as VECTA's existing warehouse PIC.
+- **`driver_vendor`** — third-party vendor driver, creates Vendor
+  Supply transactions. The only role that self-registers via CaterLink
+  (`/register`) — every other role below already has a VECTA account
+  and signs in directly with those same credentials (same Supabase Auth
+  project, so no separate CaterLink login exists for them).
+- **`post2_avsec`**, **`post6_avsec`**, **`hub_avsec`**, **`receiver`** —
+  sign off in CaterLink at whichever checkpoint is a given route's
+  actual last stop:
 
-- **IFC drivers** — AirAsia staff. Role `driver_ifc`. Create ICMS
-  inbound/outbound transactions. Register with their ICMS whitelist staff
-  ID as the "Staff / Driver ID" field.
-- **Vendor drivers** — third-party. Role `driver_vendor`. Create Vendor
-  Movement Part A.
+  | Route | Signs off as |
+  |---|---|
+  | Vendor Supply | `post2_avsec` |
+  | Maintenance | `post6_avsec` |
+  | Hub-bound | `hub_avsec` |
+  | Standard/Aircraft Outbound, REDQ, Inbound | `receiver` |
 
-No AVSEC/office staff use CaterLink, and it has no scanning, reporting,
-dashboard, or attendance features — those stay in VECTA.
+`driver_vendor` registration keeps icms-airasia's existing self-register
++ `status='pending'` + VECTA-admin-approves pattern
+(`src/lib/actions/registration.ts`) — a VECTA admin (`supervisor`)
+approves from VECTA's own admin panel, no separate approval screen here.
 
-Google Workspace SSO for `driver_ifc` was scaffolded
-(`src/app/auth/callback/route.ts`, `src/app/login/google-signin-button.tsx`)
-but isn't wired into `/login` — Google OAuth isn't configured in Supabase
-yet. Self-registration works today regardless; swapping in Google SSO
-later is optional, not a blocker.
+## Transaction lifecycle
 
-### Whitelist
+Two states only — VECTA owns everything in between:
 
-ICMS transactions hard-block any vehicle/driver not already registered
-(active) in the `vehicles`/`drivers` tables, exactly like icms-airasia
-today — registering a CaterLink account does not add anyone to that
-whitelist. An IFC driver must already be on it (added via VECTA/admin)
-before they can create a transaction here; the "Staff / Driver ID" they
-register with should match their whitelist entry exactly.
+1. **CREATED** — transaction + QR generated in CaterLink. Checkpoint
+   scanning happens entirely in VECTA; CaterLink is not involved again
+   until the last checkpoint.
+2. **COMPLETED** — the matching role (table above) signs off in
+   CaterLink with a captured signature. This generates a completion PDF,
+   downloadable in-app by both the creator and the signer from the
+   transaction's status page (`/[id]`) — no email sending is set up.
 
-## Migrations (on top of the already-applied ICMS + vendor_movement schema)
+## Migrations
 
-- `20260819000001_caterlink_driver_auth.sql` — adds the `driver_ifc`/
-  `driver_vendor` roles and RLS on `vendor_transactions`/`vendor_part_a`
-  for them (own-rows-only, mirroring the existing `vendor` policies).
-- `20260819000002_caterlink_icms_driver.sql` — RLS on `transactions`/
-  `part_a`/`seals` for `driver_ifc`, mirroring icms-airasia's `warehouse_pic`
-  policies exactly. No schema changes to those tables.
-- `20260819000003_drop_pin_drivers.sql` — drops the `pin_drivers` table
-  from an earlier Driver Code + PIN design, superseded by plain
-  self-registration. Safe no-op if that table was never created.
-
-Never re-run or edit `20260813000002_vendor_movement.sql` — already
-applied to the shared project.
+- `20260813000002_vendor_movement.sql`, `20260819000001`–`000003` —
+  CaterLink v1 (superseded, kept for history — never re-run).
+- `20260819000004_caterlink_v2_schema.sql` — the current schema.
+  Creates `cl_transactions`/`cl_seals`/`cl_signoffs`, removes `driver_ifc`
+  from `users_role_check` (and the one test row that had it), and drops
+  the now-dead v1 RLS policies on the legacy `transactions`/`part_a`/
+  `seals`/`vendor_transactions`/`vendor_part_a` tables — those tables
+  themselves, and VECTA/icms-airasia's own policies on them, are
+  untouched.
 
 ## Screens
 
-- `/register` — driver self-registration (name, staff/driver ID, email,
-  role, password) → `status='pending'` until a VECTA admin approves
-- `/login` — email + password
-- `/` — New Delivery button + today's deliveries (role-scoped: ICMS
-  `transactions` for `driver_ifc`, `vendor_transactions` for `driver_vendor`)
-- `/new` — Part A form; branches by role between the ICMS transaction form
-  (movement type, station, seals, cargo types, vehicle search) and the
-  vendor Part A form (driver details, seal number, signature)
-- `/[id]/qr` — full-screen QR pass with the reference number underneath
-- `/[id]` — read-only status, live via Supabase Realtime once AVSEC/
-  warehouse complete the next checkpoint
+- `/register` — vendor driver self-registration only.
+- `/login` — email + password (works for any existing VECTA account
+  too, same Supabase Auth project).
+- `/` — creators (`warehouse_pic`/`driver_vendor`) see a "+ New
+  Delivery" button and their transactions; signer roles see all
+  transactions with a "needs your sign-off" highlight.
+- `/new` — branches by role: detailed form (movement type, seals,
+  cargo types, vehicle-search checkbox, whitelist check against the
+  shared `vehicles`/`drivers` tables) for `warehouse_pic`; simple form
+  (driver name, NRIC, one seal) for `driver_vendor`.
+- `/[id]` — status, seals, and (once completed) sign-off details + PDF
+  download.
+- `/[id]/qr` — full-screen QR pass.
+- `/[id]/signoff` — visible only to the role required by the
+  transaction's route, only while `CREATED`.
 
 ## Setup
 
 ```bash
 cp .env.example .env.local
 # fill in NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY /
-# SUPABASE_SERVICE_ROLE_KEY / QR_TOKEN_SECRET — same Supabase project and
-# same QR_TOKEN_SECRET as VECTA.
+# SUPABASE_SERVICE_ROLE_KEY (same Supabase project as VECTA) and
+# CATERLINK_QR_SECRET (own value — see docs/qr-payload-proposal.md).
 npm install
 npm run dev
 ```
 
-Apply all three CaterLink migrations (`20260819000001` through
-`20260819000003`) to the shared Supabase project, then register a driver
-at `/register` and have a VECTA admin approve it from VECTA's admin
-panel before testing sign-in.
-
-Google OAuth (optional, later): enable the Google provider in Supabase
-Auth, restrict it to the AirAsia Workspace domain, add
-`https://<domain>/auth/callback` to the redirect allow-list, then swap
-`driver_ifc` over to `GoogleSignInButton` on `/login`.
+Apply `20260819000004_caterlink_v2_schema.sql` to the shared Supabase
+project. Hand `docs/qr-payload-proposal.md` to VECTA's team — until
+they confirm and wire their scanner to look up `cl_transactions`, the
+two systems are not actually connected for the scan/sign-off relay.

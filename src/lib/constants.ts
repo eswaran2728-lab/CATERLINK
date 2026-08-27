@@ -1,5 +1,7 @@
 import type {
   CargoType,
+  ClRoute,
+  ClStatus,
   DeliveryLocation,
   Direction,
   HubDestination,
@@ -34,9 +36,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   hub_avsec: "Hub AVSEC",
   // Performs the re-seal event for REDQ-route transactions.
   redq_avsec: "REDQ AVSEC",
-  // CaterLink-only: AirAsia staff driver (Google Workspace SSO).
-  driver_ifc: "IFC Driver",
-  // CaterLink-only: third-party vendor driver (Driver Code + PIN).
+  // CaterLink-only: third-party vendor driver, self-registers.
   driver_vendor: "Vendor Driver",
 };
 
@@ -51,7 +51,6 @@ export const ROLE_COLORS: Record<Role, string> = {
   vendor: "bg-lime-100 text-lime-800 dark:bg-lime-900/40 dark:text-lime-200",
   hub_avsec: "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200",
   redq_avsec: "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200",
-  driver_ifc: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200",
   driver_vendor: "bg-lime-100 text-lime-800 dark:bg-lime-900/40 dark:text-lime-200",
 };
 
@@ -213,4 +212,57 @@ export const VENDOR_STATUS_COLORS: Record<VendorTransactionStatus, string> = {
   PART_C_PARTIAL: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200",
   COMPLETED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200",
   ESCALATED: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200",
+};
+
+/**
+ * CaterLink v2 — see supabase/migrations/20260819000004_caterlink_v2_schema.sql.
+ * Creators: warehouse_pic (every route below except VENDOR_SUPPLY),
+ * driver_vendor (VENDOR_SUPPLY only, always set server-side, never
+ * user-picked).
+ */
+export const ROUTE_LABELS_CL: Record<ClRoute, string> = {
+  STANDARD_OUTBOUND: "Standard Outbound",
+  AIRCRAFT_OUTBOUND: "Outbound via Aircraft",
+  VENDOR_SUPPLY: "Vendor Supply",
+  HUB: "Hub-bound",
+  REDQ: "REDQ Route",
+  MAINTENANCE: "Maintenance (GSE Workshop)",
+  INBOUND: "Inbound",
+};
+
+/** Movement types a warehouse_pic actually picks when creating — VENDOR_SUPPLY excluded (driver_vendor-only). */
+export const CL_CREATABLE_ROUTES: Exclude<ClRoute, "VENDOR_SUPPLY">[] = [
+  "STANDARD_OUTBOUND",
+  "AIRCRAFT_OUTBOUND",
+  "HUB",
+  "REDQ",
+  "MAINTENANCE",
+  "INBOUND",
+];
+
+/**
+ * Which existing VECTA role signs off each route in CaterLink —
+ * whichever checkpoint team is that route's actual last physical stop.
+ * Mirrored server-side in cl_enforce_signoff() (the real authority);
+ * this copy drives the UI (who sees "needs your sign-off", route
+ * picker hints, etc).
+ */
+export const ROUTE_SIGNOFF_ROLE: Record<ClRoute, Role> = {
+  STANDARD_OUTBOUND: "receiver",
+  AIRCRAFT_OUTBOUND: "receiver",
+  VENDOR_SUPPLY: "post2_avsec",
+  HUB: "hub_avsec",
+  REDQ: "receiver",
+  MAINTENANCE: "post6_avsec",
+  INBOUND: "receiver",
+};
+
+export const CL_STATUS_LABELS: Record<ClStatus, string> = {
+  CREATED: "Created — in progress",
+  COMPLETED: "Completed",
+};
+
+export const CL_STATUS_COLORS: Record<ClStatus, string> = {
+  CREATED: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200",
+  COMPLETED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200",
 };

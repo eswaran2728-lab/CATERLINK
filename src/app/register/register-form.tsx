@@ -6,14 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
-import { ROLE_LABELS } from "@/lib/constants";
-import type { Role } from "@/lib/database.types";
 
 const initialState: RegisterState = { error: null, success: null };
 
-const REGISTERABLE_ROLES: Role[] = ["driver_ifc", "driver_vendor"];
-
+/**
+ * Vendor driver registration only — every other CaterLink role already
+ * has a VECTA account and signs in directly (see registration.ts).
+ */
 export function RegisterForm() {
   const [state, formAction, pending] = useActionState(registerStaff, initialState);
 
@@ -36,28 +35,13 @@ export function RegisterForm() {
             <Input id="reg-name" name="name" required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="reg-staff-id">Staff / Driver ID</Label>
+            <Label htmlFor="reg-staff-id">Driver ID</Label>
             <Input id="reg-staff-id" name="staff_id" required className="font-mono" />
-            <p className="text-xs text-muted-foreground">
-              IFC drivers: use your ICMS whitelist staff ID. Vendor drivers: any ID your company uses.
-            </p>
+            <p className="text-xs text-muted-foreground">Any ID your company uses to identify you.</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="reg-email">Email</Label>
             <Input id="reg-email" name="email" type="email" autoComplete="email" required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="reg-role">I am a…</Label>
-            <Select id="reg-role" name="role" required defaultValue="">
-              <option value="" disabled>
-                Select…
-              </option>
-              {REGISTERABLE_ROLES.map((role) => (
-                <option key={role} value={role}>
-                  {ROLE_LABELS[role]}
-                </option>
-              ))}
-            </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="reg-password">Password</Label>

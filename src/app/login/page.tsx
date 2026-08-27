@@ -7,9 +7,6 @@ export const metadata: Metadata = { title: "Sign in — CaterLink" };
 export const dynamic = "force-dynamic";
 
 const ERROR_MESSAGES: Record<string, string> = {
-  oauth: "Google sign-in failed. Please try again.",
-  domain: "Only @airasia.com accounts can sign in as AirAsia Staff.",
-  profile: "Could not set up your account. Contact your administrator.",
   "no-profile": "Your account is not set up yet. Contact your administrator.",
   pending: "Your registration is awaiting approval from a VECTA admin.",
   rejected: "Your registration was not approved. Contact your administrator.",
@@ -49,7 +46,7 @@ export default async function LoginPage({
         </Card>
 
         <p className="text-center text-sm text-muted-foreground">
-          New driver?{" "}
+          New vendor driver?{" "}
           <Link href="/register" className="font-medium text-primary underline-offset-4 hover:underline">
             Register here
           </Link>

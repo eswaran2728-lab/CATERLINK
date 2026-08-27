@@ -8,10 +8,9 @@
   | "vendor"
   | "hub_avsec"
   | "redq_avsec"
-  /** CaterLink-only roles (supabase/migrations/20260819000001_caterlink_driver_auth.sql):
-   *  AirAsia staff driver (Google Workspace SSO) and third-party vendor
-   *  driver (Driver Code + PIN). Both create Vendor Movement Part A. */
-  | "driver_ifc"
+  /** CaterLink-only: third-party vendor driver, self-registers with any
+   *  email + password (supabase/migrations/20260819000001). Creates
+   *  Vendor Supply transactions in cl_transactions. */
   | "driver_vendor";
 
 export type TransactionStatus =
@@ -424,6 +423,62 @@ export type VendorPartC = {
   updated_at: string;
 }
 
+/**
+ * CaterLink v2 (supabase/migrations/20260819000004_caterlink_v2_schema.sql).
+ * Fresh, CaterLink-owned tables — deliberately not the icms-airasia
+ * `transactions`/`vendor_transactions`/`part_a`/`seals` tables above,
+ * which VECTA keeps using unchanged for its own workflow. VECTA owns
+ * everything between CREATED and COMPLETED (checkpoint scanning);
+ * CaterLink only creates the transaction, shows the QR, and records the
+ * final sign-off.
+ */
+export type ClRoute =
+  | "STANDARD_OUTBOUND"
+  | "AIRCRAFT_OUTBOUND"
+  | "VENDOR_SUPPLY"
+  | "HUB"
+  | "REDQ"
+  | "MAINTENANCE"
+  | "INBOUND";
+
+export type ClStatus = "CREATED" | "COMPLETED";
+
+export type ClTransaction = {
+  id: string;
+  reference_number: string;
+  route: ClRoute;
+  vehicle_number: string;
+  driver_name: string;
+  driver_id: string | null;
+  cargo_types: CargoType[];
+  vehicle_search_completed: boolean;
+  qr_token: string | null;
+  completed_form_url: string | null;
+  status: ClStatus;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+};
+
+export type ClSeal = {
+  id: string;
+  transaction_id: string;
+  seal_number: string;
+  seal_type: SealType;
+  seal_color: SealColor;
+  created_at: string;
+};
+
+export type ClSignoff = {
+  id: string;
+  transaction_id: string;
+  signer_id: string;
+  signer_role: Role;
+  signature_url: string;
+  signed_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -745,6 +800,43 @@ export type Database = {
         Update: Partial<VendorPartC>;
         Relationships: [];
       };
+      cl_transactions: {
+        Row: ClTransaction;
+        Insert: Omit<
+          ClTransaction,
+          | "id"
+          | "reference_number"
+          | "status"
+          | "qr_token"
+          | "completed_form_url"
+          | "created_at"
+          | "updated_at"
+          | "completed_at"
+        > & {
+          id?: string;
+          reference_number?: string;
+          status?: ClStatus;
+          qr_token?: string | null;
+          completed_form_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          completed_at?: string | null;
+        };
+        Update: Partial<ClTransaction>;
+        Relationships: [];
+      };
+      cl_seals: {
+        Row: ClSeal;
+        Insert: Omit<ClSeal, "id" | "created_at"> & { id?: string; created_at?: string };
+        Update: never;
+        Relationships: [];
+      };
+      cl_signoffs: {
+        Row: ClSignoff;
+        Insert: Omit<ClSignoff, "id" | "signed_at"> & { id?: string; signed_at?: string };
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -758,6 +850,7 @@ export type Database = {
         Args: { p_reason?: string | null };
         Returns: number;
       };
+      cl_next_reference_number: { Args: Record<string, never>; Returns: string };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

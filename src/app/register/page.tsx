@@ -11,7 +11,10 @@ export default function RegisterPage() {
       <div className="w-full max-w-sm space-y-6">
         <div className="space-y-1 text-center">
           <h1 className="font-heading text-3xl font-bold tracking-tight">CaterLink</h1>
-          <p className="text-sm text-muted-foreground">Driver registration</p>
+          <p className="text-sm text-muted-foreground">Vendor driver registration</p>
+          <p className="text-xs text-muted-foreground">
+            AirAsia/VECTA staff: sign in directly with your existing VECTA account instead.
+          </p>
         </div>
 
         <RegisterForm />

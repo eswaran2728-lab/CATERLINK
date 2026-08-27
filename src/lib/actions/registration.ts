@@ -1,22 +1,24 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Role } from "@/lib/database.types";
 
 export interface RegisterState {
   error: string | null;
   success: string | null;
 }
 
-/** CaterLink only ever registers the two driver roles — never vendor/warehouse_pic/etc. */
-const REGISTERABLE_ROLES: Role[] = ["driver_ifc", "driver_vendor"];
-
 /**
- * Public: driver self-registration, ported from icms-airasia's
- * registerStaff. Creates a real Supabase Auth account right away (any
- * email the driver already uses — no domain/whitelist restriction here)
- * but the profile is inserted with status='pending', which blocks
- * sign-in (enforced in auth-session.ts's signIn) until a VECTA admin
+ * Public: vendor driver self-registration, ported from icms-airasia's
+ * registerStaff. Every other CaterLink role (warehouse_pic,
+ * post2_avsec, post6_avsec, hub_avsec, receiver) already has a VECTA
+ * account in the same Supabase Auth project — they sign in directly,
+ * no registration needed. Only driver_vendor has no prior account
+ * anywhere, so this is the only role this form ever creates.
+ *
+ * Creates a real Supabase Auth account right away (any email the
+ * driver already uses — no domain/whitelist restriction) but the
+ * profile is inserted with status='pending', which blocks sign-in
+ * (enforced in auth-session.ts's signIn) until a VECTA admin
  * (supervisor role) approves it from VECTA's existing admin panel — no
  * separate approval screen in CaterLink.
  */
@@ -24,14 +26,10 @@ export async function registerStaff(_prev: RegisterState, formData: FormData): P
   const name = String(formData.get("name") ?? "").trim();
   const staffId = String(formData.get("staff_id") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const role = String(formData.get("role") ?? "") as Role;
   const password = String(formData.get("password") ?? "");
 
   if (!name || !staffId || !email) {
-    return { error: "Name, staff/driver ID and email are required.", success: null };
-  }
-  if (!REGISTERABLE_ROLES.includes(role)) {
-    return { error: "Select whether you're an IFC driver or a vendor driver.", success: null };
+    return { error: "Name, driver ID and email are required.", success: null };
   }
   if (password.length < 10) {
     return { error: "Password must be at least 10 characters.", success: null };
@@ -54,7 +52,7 @@ export async function registerStaff(_prev: RegisterState, formData: FormData): P
     name,
     staff_id: staffId,
     email,
-    role,
+    role: "driver_vendor",
     status: "pending",
   });
 

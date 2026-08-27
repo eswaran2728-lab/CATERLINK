@@ -1,23 +1,35 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { createVendorTransaction, type ActionState } from "@/lib/actions/vendor-transactions";
+import { createVendorSupplyTransaction, type ActionState } from "@/lib/actions/cl-transactions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SignatureField } from "@/components/signature-pad";
 
 const initialState: ActionState = { error: null };
 
-export function VendorPartAForm() {
-  const [state, formAction, pending] = useActionState(createVendorTransaction, initialState);
-  const [signature, setSignature] = useState<string | null>(null);
+export function VendorSupplyForm() {
+  const [state, formAction, pending] = useActionState(createVendorSupplyTransaction, initialState);
+  const [ready, setReady] = useState(false);
 
   return (
     <Card>
       <CardContent className="pt-6">
-        <form action={formAction} className="space-y-5">
+        <form
+          action={formAction}
+          onChange={(e) => {
+            const form = e.currentTarget;
+            setReady(
+              Boolean(
+                (form.elements.namedItem("driver_name") as HTMLInputElement)?.value &&
+                  (form.elements.namedItem("nric_number") as HTMLInputElement)?.value &&
+                  (form.elements.namedItem("seal_number") as HTMLInputElement)?.value
+              )
+            );
+          }}
+          className="space-y-5"
+        >
           <div className="space-y-2">
             <Label htmlFor="driver_name">Driver Name</Label>
             <Input id="driver_name" name="driver_name" required />
@@ -31,16 +43,13 @@ export function VendorPartAForm() {
             <Input id="seal_number" name="seal_number" className="font-mono" required />
           </div>
 
-          <SignatureField label="Driver Signature" onChange={setSignature} />
-          <input type="hidden" name="signature" value={signature ?? ""} />
-
           {state.error ? (
             <p role="alert" className="text-sm font-medium text-red-600 dark:text-red-400">
               {state.error}
             </p>
           ) : null}
 
-          <Button type="submit" size="xl" className="w-full" disabled={pending || !signature}>
+          <Button type="submit" size="xl" className="w-full" disabled={pending || !ready}>
             {pending ? "Creating…" : "Create Delivery & Generate QR"}
           </Button>
         </form>
