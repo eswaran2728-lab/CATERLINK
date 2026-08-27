@@ -424,36 +424,6 @@ export type VendorPartC = {
   updated_at: string;
 }
 
-/**
- * CaterLink-only: a Driver Code + PIN identity, shared by vendor drivers
- * (permanent) and IFC drivers (temporary, until Google SSO is
- * configured — see scripts/create-ifc-driver.mjs). See
- * supabase/migrations/20260819000001_caterlink_driver_auth.sql. `id` is
- * the same uuid as the driver's (passwordless) auth.users row and their
- * public.users row, so auth.uid() joins straight to this table.
- */
-export type PinDriverRole = "driver_ifc" | "driver_vendor";
-
-export type PinDriver = {
-  id: string;
-  driver_role: PinDriverRole;
-  /** Only set for driver_vendor rows — the owning vendor company account. */
-  vendor_id: string | null;
-  driver_code: string;
-  pin_hash: string;
-  full_name: string;
-  /** Vendor drivers only. */
-  ic_number: string | null;
-  /** IFC drivers only — their ICMS whitelist staff_id. */
-  staff_id: string | null;
-  phone: string | null;
-  vehicle_plate: string | null;
-  is_active: boolean;
-  failed_pin_attempts: number;
-  locked_until: string | null;
-  created_at: string;
-};
-
 export type Database = {
   public: {
     Tables: {
@@ -775,22 +745,6 @@ export type Database = {
         Update: Partial<VendorPartC>;
         Relationships: [];
       };
-      pin_drivers: {
-        Row: PinDriver;
-        Insert: Omit<
-          PinDriver,
-          "id" | "created_at" | "is_active" | "failed_pin_attempts" | "locked_until" | "driver_code"
-        > & {
-          id?: string;
-          created_at?: string;
-          is_active?: boolean;
-          failed_pin_attempts?: number;
-          locked_until?: string | null;
-          driver_code?: string;
-        };
-        Update: Partial<PinDriver>;
-        Relationships: [];
-      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -804,7 +758,6 @@ export type Database = {
         Args: { p_reason?: string | null };
         Returns: number;
       };
-      next_driver_code: { Args: { p_role: string }; Returns: string };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

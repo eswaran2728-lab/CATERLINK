@@ -20,7 +20,6 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const profile = await requireProfile();
-  if (profile.role === "vendor") redirect("/admin/drivers");
   if (profile.role !== "driver_ifc" && profile.role !== "driver_vendor") {
     redirect("/login?error=no-profile");
   }

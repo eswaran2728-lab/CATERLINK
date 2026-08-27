@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PinDriverLoginForm } from "./pin-driver-login-form";
+import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Sign in — CaterLink" };
 export const dynamic = "force-dynamic";
@@ -10,8 +11,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   domain: "Only @airasia.com accounts can sign in as AirAsia Staff.",
   profile: "Could not set up your account. Contact your administrator.",
   "no-profile": "Your account is not set up yet. Contact your administrator.",
-  pending: "Your account is awaiting approval.",
-  rejected: "Your account was not approved. Contact your administrator.",
+  pending: "Your registration is awaiting approval from a VECTA admin.",
+  rejected: "Your registration was not approved. Contact your administrator.",
 };
 
 export default async function LoginPage({
@@ -40,16 +41,18 @@ export default async function LoginPage({
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Sign in with your Driver Code</CardTitle>
+            <CardTitle className="text-base">Sign in</CardTitle>
           </CardHeader>
           <CardContent>
-            <PinDriverLoginForm />
+            <LoginForm />
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-muted-foreground">
-          Both IFC and vendor drivers sign in with a Driver Code + PIN for now. AirAsia staff
-          Google Sign-In is coming soon — ask your admin for a Driver Code in the meantime.
+        <p className="text-center text-sm text-muted-foreground">
+          New driver?{" "}
+          <Link href="/register" className="font-medium text-primary underline-offset-4 hover:underline">
+            Register here
+          </Link>
         </p>
       </div>
     </div>

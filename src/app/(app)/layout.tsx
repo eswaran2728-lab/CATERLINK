@@ -15,11 +15,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             CaterLink
           </Link>
           <div className="flex items-center gap-2">
-            {profile.role === "vendor" ? (
-              <Link href="/admin/drivers" className="text-sm text-muted-foreground hover:text-foreground">
-                Drivers
-              </Link>
-            ) : null}
             <Badge className={ROLE_COLORS[profile.role]}>{ROLE_LABELS[profile.role]}</Badge>
             <SignOutButton />
           </div>
