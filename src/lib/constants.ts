@@ -40,18 +40,23 @@ export const ROLE_LABELS: Record<Role, string> = {
   driver_vendor: "Vendor Driver",
 };
 
-/** Distinct color per role for the persistent header badge (AVSEC role identification). */
+/**
+ * Distinct color per role for the persistent header badge — dark-native
+ * chips (translucent tint + tinted border), matching the approved
+ * CaterLink mockups' status-pill style. CaterLink is dark-only, so
+ * these deliberately have no light-mode variant.
+ */
 export const ROLE_COLORS: Record<Role, string> = {
-  warehouse_pic: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200",
-  post2_avsec: "bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200",
-  post6_avsec: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-200",
-  receiver: "bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200",
-  supervisor: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200",
-  enforcement: "bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/40 dark:text-fuchsia-200",
-  vendor: "bg-lime-100 text-lime-800 dark:bg-lime-900/40 dark:text-lime-200",
-  hub_avsec: "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200",
-  redq_avsec: "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200",
-  driver_vendor: "bg-lime-100 text-lime-800 dark:bg-lime-900/40 dark:text-lime-200",
+  warehouse_pic: "bg-[rgba(129,140,248,0.12)] text-[#818CF8] border border-[rgba(129,140,248,0.3)]",
+  post2_avsec: "bg-[rgba(167,139,250,0.12)] text-[#A78BFA] border border-[rgba(167,139,250,0.3)]",
+  post6_avsec: "bg-[rgba(34,211,238,0.12)] text-[#22D3EE] border border-[rgba(34,211,238,0.3)]",
+  receiver: "bg-[rgba(45,212,191,0.12)] text-[#2DD4BF] border border-[rgba(45,212,191,0.3)]",
+  supervisor: "bg-[rgba(245,166,35,0.12)] text-[#F5A623] border border-[rgba(245,166,35,0.3)]",
+  enforcement: "bg-[rgba(232,121,249,0.12)] text-[#E879F9] border border-[rgba(232,121,249,0.3)]",
+  vendor: "bg-[rgba(163,230,53,0.12)] text-[#A3E635] border border-[rgba(163,230,53,0.3)]",
+  hub_avsec: "bg-[rgba(56,189,248,0.12)] text-[#38BDF8] border border-[rgba(56,189,248,0.3)]",
+  redq_avsec: "bg-[rgba(251,113,133,0.12)] text-[#FB7185] border border-[rgba(251,113,133,0.3)]",
+  driver_vendor: "bg-[rgba(245,166,35,0.12)] text-[#F5A623] border border-[rgba(245,166,35,0.3)]",
 };
 
 export const STATUS_LABELS: Record<TransactionStatus, string> = {
@@ -263,6 +268,6 @@ export const CL_STATUS_LABELS: Record<ClStatus, string> = {
 };
 
 export const CL_STATUS_COLORS: Record<ClStatus, string> = {
-  CREATED: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200",
-  COMPLETED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200",
+  CREATED: "bg-[rgba(96,165,250,0.12)] text-[#60A5FA] border border-[rgba(96,165,250,0.3)]",
+  COMPLETED: "bg-[rgba(52,211,153,0.12)] text-[#34D399] border border-[rgba(52,211,153,0.3)]",
 };

@@ -1,23 +1,38 @@
 @import "tailwindcss";
 
+/*
+ * CaterLink design language, taken from the approved UI mockups
+ * (CaterLink.dc.html / BottomNav.dc.html) — dark shell, amber accent,
+ * Space Grotesk headings, Manrope body, JetBrains Mono for codes/refs.
+ * Deliberately dark-only (the mockups show no light variant).
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --card: #ffffff;
-  --card-foreground: #171717;
-  --primary: #dc2626;
-  --primary-foreground: #ffffff;
-  --secondary: #f3f4f6;
-  --secondary-foreground: #171717;
-  --muted: #f3f4f6;
-  --muted-foreground: #6b7280;
-  --accent: #f3f4f6;
-  --accent-foreground: #171717;
-  --destructive: #dc2626;
+  --background: #04070c;
+  --foreground: #f5f7fa;
+  --card: #101a2c;
+  --card-foreground: #f5f7fa;
+  --panel: #0e1626;
+  --primary: #f5a623;
+  --primary-hover: #ffb84d;
+  --primary-active: #e0961a;
+  --primary-foreground: #181000;
+  --secondary: #101a2c;
+  --secondary-foreground: #f5f7fa;
+  --muted: #101a2c;
+  --muted-foreground: #5c6b84;
+  --muted-foreground-2: #8b96a8;
+  --accent: #101a2c;
+  --accent-foreground: #f5f7fa;
+  --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #e5e7eb;
-  --input: #e5e7eb;
-  --ring: #dc2626;
+  --success: #34d399;
+  --warning: #fb923c;
+  --info: #60a5fa;
+  --purple: #c084fc;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #f5a623;
 }
 
 @theme inline {
@@ -25,6 +40,7 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-panel: var(--panel);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
@@ -35,32 +51,62 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-purple: var(--purple);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-body);
+  --font-heading: var(--font-heading);
+  --font-mono: var(--font-mono-code);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --card: #111111;
-    --card-foreground: #ededed;
-    --secondary: #1f1f1f;
-    --secondary-foreground: #ededed;
-    --muted: #1f1f1f;
-    --muted-foreground: #9ca3af;
-    --accent: #1f1f1f;
-    --accent-foreground: #ededed;
-    --border: #262626;
-    --input: #262626;
-  }
+* {
+  border-color: var(--border);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), "Manrope", sans-serif;
+}
+
+::selection {
+  background: rgba(245, 166, 35, 0.35);
+}
+
+a {
+  color: var(--primary);
+}
+a:hover {
+  color: var(--primary-hover);
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 166, 35, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(245, 166, 35, 0);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3.2s ease-in-out infinite;
+}
+
+@keyframes scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+.animate-scanline {
+  animation: scanline 2.6s linear infinite;
 }

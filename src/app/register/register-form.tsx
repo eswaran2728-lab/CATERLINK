@@ -20,7 +20,7 @@ export function RegisterForm() {
     return (
       <Card>
         <CardContent className="pt-6">
-          <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">{state.success}</p>
+          <p className="text-sm font-medium text-[#34D399]">{state.success}</p>
         </CardContent>
       </Card>
     );
@@ -57,7 +57,7 @@ export function RegisterForm() {
           </div>
 
           {state.error ? (
-            <p role="alert" className="text-sm font-medium text-red-600 dark:text-red-400">
+            <p role="alert" className="text-sm font-medium text-[#FB7185]">
               {state.error}
             </p>
           ) : null}

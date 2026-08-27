@@ -32,8 +32,8 @@ export function BigCheckbox({
       className={cn(
         "flex cursor-pointer items-center gap-4 rounded-lg border p-4 transition-colors",
         checked
-          ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40"
-          : "border-input bg-background hover:bg-accent"
+          ? "border-[#34D399] bg-[rgba(52,211,153,0.08)]"
+          : "border-input bg-card hover:bg-accent"
       )}
     >
       <input

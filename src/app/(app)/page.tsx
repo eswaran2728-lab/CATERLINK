@@ -36,7 +36,7 @@ export default async function HomePage() {
     <div className="space-y-6">
       {isCreator ? (
         <Link href="/new">
-          <Button size="xl" className="w-full">
+          <Button size="xl" className="w-full animate-pulse-glow">
             + New Delivery
           </Button>
         </Link>
