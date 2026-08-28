@@ -13,6 +13,7 @@ const DEV_SEED_TOKEN = "ed629919d0028642d9256b98dc24d887";
 const TEST_ACCOUNTS = [
   { role: "warehouse_pic", email: "test-warehouse-pic@caterlink.internal", name: "Test Warehouse PIC", staffId: "TEST-WH-001" },
   { role: "receiver", email: "test-receiver@caterlink.internal", name: "Test Receiver", staffId: "TEST-RCV-001" },
+  { role: "driver_vendor", email: "test-vendor-driver@caterlink.internal", name: "Test Vendor Driver", staffId: "TEST-VND-001" },
 ] as const;
 
 function html(body: string) {
