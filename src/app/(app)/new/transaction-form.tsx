@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { createClTransaction, type ActionState } from "@/lib/actions/cl-transactions";
 import { CL_CREATABLE_ROUTES, CARGO_TYPE_LABELS, CARGO_TYPES, ROUTE_LABELS_CL } from "@/lib/constants";
+import { getMissingTransactionRequirements } from "@/lib/form-validation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { BigCheckbox } from "@/components/ui/checkbox";
@@ -13,6 +14,10 @@ import { SealEditor, type SealDraft } from "@/components/seal-editor";
 import type { CargoType, ClRoute } from "@/lib/database.types";
 
 const initialState: ActionState = { error: null };
+
+// Set at build time to point the whitelist-rejection callout at a real
+// inbox; falls back to a generic "contact your fleet admin" line when unset.
+const FLEET_ADMIN_EMAIL = process.env.NEXT_PUBLIC_FLEET_ADMIN_EMAIL;
 
 export function TransactionForm() {
   const [state, formAction, pending] = useActionState(createClTransaction, initialState);
@@ -28,6 +33,14 @@ export function TransactionForm() {
   };
 
   const sealsReady = seals.length > 0 && seals.every((s) => s.seal_number.trim() !== "" && s.seal_color !== "");
+
+  const missingRequirements = getMissingTransactionRequirements({
+    route,
+    cargoTypesCount: cargoTypes.length,
+    sealsReady,
+    vehicleSearchCompleted: searchDone,
+  });
+  const isWhitelistViolation = state.error?.startsWith("WHITELIST_VIOLATION:") ?? false;
 
   return (
     <Card>
@@ -107,8 +120,41 @@ export function TransactionForm() {
           />
 
           {state.error ? (
-            <p role="alert" className="text-sm font-medium text-[#FB7185]">
-              {state.error.replace(/^WHITELIST_VIOLATION:\s*/, "")}
+            isWhitelistViolation ? (
+              <div
+                role="alert"
+                className="space-y-2 rounded-xl border border-[rgba(251,113,133,0.3)] bg-[rgba(251,113,133,0.08)] p-4"
+              >
+                <p className="text-sm font-medium text-[#FB7185]">
+                  {state.error.replace(/^WHITELIST_VIOLATION:\s*/, "")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {FLEET_ADMIN_EMAIL ? (
+                    <>
+                      This vehicle/driver isn&apos;t on the active whitelist yet. Email your fleet admin at{" "}
+                      <a
+                        href={`mailto:${FLEET_ADMIN_EMAIL}?subject=${encodeURIComponent("CaterLink whitelist request")}`}
+                        className="font-medium text-primary underline-offset-4 hover:underline"
+                      >
+                        {FLEET_ADMIN_EMAIL}
+                      </a>{" "}
+                      to add it, then try again.
+                    </>
+                  ) : (
+                    "This vehicle/driver isn't on the active whitelist yet. Contact your fleet admin (VECTA Supervisor) to add it, then try again."
+                  )}
+                </p>
+              </div>
+            ) : (
+              <p role="alert" className="text-sm font-medium text-[#FB7185]">
+                {state.error}
+              </p>
+            )
+          ) : null}
+
+          {missingRequirements.length > 0 ? (
+            <p role="alert" className="text-sm font-medium text-[#FB923C]">
+              Before you can submit, complete: {missingRequirements.join(", ")}.
             </p>
           ) : null}
 
@@ -116,7 +162,7 @@ export function TransactionForm() {
             type="submit"
             size="xl"
             className="w-full"
-            disabled={pending || !route || !searchDone || !sealsReady || cargoTypes.length === 0}
+            disabled={pending || missingRequirements.length > 0}
           >
             {pending ? "Creating…" : "Create Transaction & Generate QR"}
           </Button>

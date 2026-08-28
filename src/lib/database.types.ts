@@ -441,7 +441,7 @@ export type ClRoute =
   | "MAINTENANCE"
   | "INBOUND";
 
-export type ClStatus = "CREATED" | "COMPLETED";
+export type ClStatus = "CREATED" | "COMPLETED" | "CANCELLED";
 
 export type ClTransaction = {
   id: string;
@@ -459,6 +459,9 @@ export type ClTransaction = {
   created_at: string;
   updated_at: string;
   completed_at: string | null;
+  cancelled_at: string | null;
+  cancelled_reason: string | null;
+  cancelled_by: string | null;
 };
 
 export type ClSeal = {
@@ -812,6 +815,9 @@ export type Database = {
           | "created_at"
           | "updated_at"
           | "completed_at"
+          | "cancelled_at"
+          | "cancelled_reason"
+          | "cancelled_by"
         > & {
           id?: string;
           reference_number?: string;
@@ -821,6 +827,9 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           completed_at?: string | null;
+          cancelled_at?: string | null;
+          cancelled_reason?: string | null;
+          cancelled_by?: string | null;
         };
         Update: Partial<ClTransaction>;
         Relationships: [];
@@ -851,6 +860,10 @@ export type Database = {
         Returns: number;
       };
       cl_next_reference_number: { Args: Record<string, never>; Returns: string };
+      cl_cancel_transaction: {
+        Args: { p_transaction_id: string; p_reason: string };
+        Returns: void;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

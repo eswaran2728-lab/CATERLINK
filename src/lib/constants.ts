@@ -265,9 +265,11 @@ export const ROUTE_SIGNOFF_ROLE: Record<ClRoute, Role> = {
 export const CL_STATUS_LABELS: Record<ClStatus, string> = {
   CREATED: "Created — in progress",
   COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
 };
 
 export const CL_STATUS_COLORS: Record<ClStatus, string> = {
   CREATED: "bg-[rgba(96,165,250,0.12)] text-[#60A5FA] border border-[rgba(96,165,250,0.3)]",
   COMPLETED: "bg-[rgba(52,211,153,0.12)] text-[#34D399] border border-[rgba(52,211,153,0.3)]",
+  CANCELLED: "bg-[rgba(251,113,133,0.12)] text-[#FB7185] border border-[rgba(251,113,133,0.3)]",
 };

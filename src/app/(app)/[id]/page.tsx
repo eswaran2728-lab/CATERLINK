@@ -12,6 +12,7 @@ import { formatDateTime } from "@/lib/utils";
 import type { ClSeal, ClSignoff, ClTransaction } from "@/lib/database.types";
 import { LiveRefresh } from "./live-refresh";
 import { Row, Sig } from "./status-rows";
+import { CancelForm } from "./cancel-form";
 
 export const metadata: Metadata = { title: "Transaction status — CaterLink" };
 export const dynamic = "force-dynamic";
@@ -39,6 +40,9 @@ export default async function TransactionStatusPage({ params }: { params: Promis
 
   const requiredSignoffRole = ROUTE_SIGNOFF_ROLE[transaction.route];
   const canSignOff = transaction.status === "CREATED" && profile.role === requiredSignoffRole;
+  const canCancel =
+    transaction.status === "CREATED" &&
+    (transaction.created_by === profile.id || profile.role === "supervisor");
 
   return (
     <div className="space-y-4">
@@ -99,9 +103,28 @@ export default async function TransactionStatusPage({ params }: { params: Promis
 
       {transaction.status === "CREATED" ? (
         <Card>
-          <CardContent className="py-6 text-center text-sm text-muted-foreground">
-            In progress at checkpoints (VECTA). Awaiting sign-off by <strong>{requiredSignoffRole}</strong> at the
-            final checkpoint.
+          <CardContent className="space-y-4 py-6 text-center text-sm text-muted-foreground">
+            <p>
+              In progress at checkpoints (VECTA). Awaiting sign-off by <strong>{requiredSignoffRole}</strong> at the
+              final checkpoint.
+            </p>
+            {canCancel ? (
+              <div className="flex justify-center">
+                <CancelForm transactionId={transaction.id} />
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {transaction.status === "CANCELLED" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base text-[#FB7185]">Cancelled</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            <Row label="Reason" value={transaction.cancelled_reason} />
+            <Row label="Cancelled At" value={formatDateTime(transaction.cancelled_at)} />
           </CardContent>
         </Card>
       ) : null}

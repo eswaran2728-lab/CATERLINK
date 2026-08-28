@@ -8,7 +8,9 @@ import { uploadDataUrl, uploadPdfBuffer } from "@/lib/storage";
 import { generateClQrToken } from "@/lib/cl-qr-token";
 import { generateClCompletionPdf } from "@/lib/cl-pdf";
 import { ROUTE_SIGNOFF_ROLE } from "@/lib/constants";
-import type { CargoType, ClRoute, ClSeal, SealColor, SealType } from "@/lib/database.types";
+import { parseSealDrafts, namesMatch, buildWhitelistViolationMessage } from "@/lib/seal-parsing";
+import type { CargoType, ClRoute } from "@/lib/database.types";
+import type { ClSeal } from "@/lib/database.types";
 
 export interface ActionState {
   error: string | null;
@@ -22,8 +24,6 @@ function bool(formData: FormData, key: string): boolean {
   return formData.get(key) === "on" || formData.get(key) === "true";
 }
 
-const SEAL_TYPES: SealType[] = ["TRUCK_SEAL", "TROLLEY", "OTHER"];
-const SEAL_COLORS: SealColor[] = ["BLUE", "GREEN", "OTHER"];
 const CARGO_TYPES: CargoType[] = [
   "FOOD_BEVERAGE",
   "PERISHABLE",
@@ -40,30 +40,6 @@ const CL_ROUTES: ClRoute[] = [
   "MAINTENANCE",
   "INBOUND",
 ];
-
-interface SealDraftInput {
-  seal_number: string;
-  seal_type: SealType;
-  seal_color: SealColor;
-}
-
-function parseSealDrafts(raw: string): SealDraftInput[] | null {
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) return null;
-    const seals: SealDraftInput[] = [];
-    for (const item of parsed) {
-      const number = String(item?.seal_number ?? "").trim().toUpperCase();
-      const type = String(item?.seal_type ?? "") as SealType;
-      const color = String(item?.seal_color ?? "") as SealColor;
-      if (!number || !SEAL_TYPES.includes(type) || !SEAL_COLORS.includes(color)) return null;
-      seals.push({ seal_number: number, seal_type: type, seal_color: color });
-    }
-    return seals;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * warehouse_pic creates the standard/aircraft/hub/REDQ/maintenance/inbound
@@ -118,11 +94,9 @@ export async function createClTransaction(_prev: ActionState, formData: FormData
   if (!vehicleRes.data) unlisted.push(`vehicle ${vehicleNumber}`);
   if (!driverRes.data) unlisted.push(`driver ${driverId}`);
   if (unlisted.length > 0) {
-    return {
-      error: `WHITELIST_VIOLATION: ${unlisted.join(" and ")} not on the active whitelist. Ask an Admin to add this vehicle/driver first.`,
-    };
+    return { error: buildWhitelistViolationMessage(unlisted) };
   }
-  if (driverRes.data && driverRes.data.name.trim().toUpperCase() !== driverName.trim().toUpperCase()) {
+  if (driverRes.data && !namesMatch(driverRes.data.name, driverName)) {
     return {
       error: `WHITELIST_VIOLATION: driver name "${driverName}" does not match the whitelisted name on file for driver ID ${driverId}.`,
     };
@@ -284,4 +258,46 @@ export async function signOffClTransaction(_prev: ActionState, formData: FormDat
   revalidatePath(`/${transactionId}`);
   revalidatePath("/");
   redirect(`/${transactionId}?completed=1`);
+}
+
+/**
+ * Cancels a CREATED transaction (failed vehicle search, vendor no-show,
+ * etc). The security-definer cl_cancel_transaction() DB function is the
+ * real authority — it re-checks that the caller is either the creator or
+ * a supervisor and that the transaction is still CREATED, so this action's
+ * own role check is just a friendlier error before hitting the DB.
+ */
+export async function cancelClTransaction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const profile = await requireProfile();
+
+  const transactionId = str(formData, "transaction_id");
+  const reason = str(formData, "reason");
+  if (!transactionId) return { error: "Missing transaction reference." };
+  if (!reason) return { error: "A cancellation reason is required." };
+
+  const supabase = await createClient();
+  const { data: txRow } = await supabase
+    .from("cl_transactions")
+    .select("status, created_by")
+    .eq("id", transactionId)
+    .single();
+  if (!txRow) return { error: "Transaction not found." };
+  if (txRow.status !== "CREATED") {
+    return { error: `This transaction is already ${txRow.status}.` };
+  }
+  if (txRow.created_by !== profile.id && profile.role !== "supervisor") {
+    return { error: "Only the creator or an Admin can cancel this transaction." };
+  }
+
+  const { error } = await supabase.rpc("cl_cancel_transaction", {
+    p_transaction_id: transactionId,
+    p_reason: reason,
+  });
+  if (error) {
+    return { error: `Could not cancel transaction: ${error.message}` };
+  }
+
+  revalidatePath(`/${transactionId}`);
+  revalidatePath("/");
+  redirect(`/${transactionId}?cancelled=1`);
 }
