@@ -1,7 +1,5 @@
 import type {
   CargoType,
-  ClRoute,
-  ClStatus,
   DeliveryLocation,
   Direction,
   HubDestination,
@@ -14,6 +12,47 @@ import type {
   TransactionStatus,
   VendorTransactionStatus,
 } from "./database.types";
+
+/**
+ * CaterLink's own movement-type picker for /new — collapses onto VECTA's
+ * real direction/route model (see the CaterLink<->VECTA Forms
+ * Integration Contract). MAINTENANCE is sent directly as route =
+ * 'MAINTENANCE' (not derived from AIRCRAFT + cargo_types): the live
+ * transactions_maintenance_cargo_pairing CHECK constraint and
+ * enforce_part_sequence()'s MAINTENANCE branch both require the row's
+ * route to already be 'MAINTENANCE' — there's no DB trigger that
+ * performs that derivation for a row inserted directly (as CaterLink
+ * does), so sending 'AIRCRAFT' here would leave Part C waiting on a
+ * Part D that VECTA's own logic says a maintenance movement never gets.
+ */
+export type MovementType = "OUTBOUND" | "INBOUND" | "HUB" | "REDQ" | "MAINTENANCE";
+
+export const MOVEMENT_TYPE_LABELS: Record<MovementType, string> = {
+  OUTBOUND: "Outbound (Aircraft)",
+  INBOUND: "Inbound",
+  HUB: "Hub-bound",
+  REDQ: "REDQ Route",
+  MAINTENANCE: "Maintenance (GSE Workshop)",
+};
+
+export const MOVEMENT_TYPES: MovementType[] = ["OUTBOUND", "INBOUND", "HUB", "REDQ", "MAINTENANCE"];
+
+export function movementTypeToDirectionRoute(
+  type: MovementType
+): { direction: Direction; route: TransactionRoute } {
+  switch (type) {
+    case "OUTBOUND":
+      return { direction: "OUTBOUND", route: "AIRCRAFT" };
+    case "INBOUND":
+      return { direction: "INBOUND", route: "AIRCRAFT" };
+    case "HUB":
+      return { direction: "OUTBOUND", route: "HUB" };
+    case "REDQ":
+      return { direction: "OUTBOUND", route: "REDQ" };
+    case "MAINTENANCE":
+      return { direction: "OUTBOUND", route: "MAINTENANCE" };
+  }
+}
 
 export const ROLE_LABELS: Record<Role, string> = {
   // Covers both the in-flight catering warehouse and the SRA warehouse —
@@ -219,57 +258,3 @@ export const VENDOR_STATUS_COLORS: Record<VendorTransactionStatus, string> = {
   ESCALATED: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200",
 };
 
-/**
- * CaterLink v2 — see supabase/migrations/20260819000004_caterlink_v2_schema.sql.
- * Creators: warehouse_pic (every route below except VENDOR_SUPPLY),
- * driver_vendor (VENDOR_SUPPLY only, always set server-side, never
- * user-picked).
- */
-export const ROUTE_LABELS_CL: Record<ClRoute, string> = {
-  STANDARD_OUTBOUND: "Standard Outbound",
-  AIRCRAFT_OUTBOUND: "Outbound via Aircraft",
-  VENDOR_SUPPLY: "Vendor Supply",
-  HUB: "Hub-bound",
-  REDQ: "REDQ Route",
-  MAINTENANCE: "Maintenance (GSE Workshop)",
-  INBOUND: "Inbound",
-};
-
-/** Movement types a warehouse_pic actually picks when creating — VENDOR_SUPPLY excluded (driver_vendor-only). */
-export const CL_CREATABLE_ROUTES: Exclude<ClRoute, "VENDOR_SUPPLY">[] = [
-  "STANDARD_OUTBOUND",
-  "AIRCRAFT_OUTBOUND",
-  "HUB",
-  "REDQ",
-  "MAINTENANCE",
-  "INBOUND",
-];
-
-/**
- * Which existing VECTA role signs off each route in CaterLink —
- * whichever checkpoint team is that route's actual last physical stop.
- * Mirrored server-side in cl_enforce_signoff() (the real authority);
- * this copy drives the UI (who sees "needs your sign-off", route
- * picker hints, etc).
- */
-export const ROUTE_SIGNOFF_ROLE: Record<ClRoute, Role> = {
-  STANDARD_OUTBOUND: "receiver",
-  AIRCRAFT_OUTBOUND: "receiver",
-  VENDOR_SUPPLY: "post2_avsec",
-  HUB: "hub_avsec",
-  REDQ: "receiver",
-  MAINTENANCE: "post6_avsec",
-  INBOUND: "receiver",
-};
-
-export const CL_STATUS_LABELS: Record<ClStatus, string> = {
-  CREATED: "Created — in progress",
-  COMPLETED: "Completed",
-  CANCELLED: "Cancelled",
-};
-
-export const CL_STATUS_COLORS: Record<ClStatus, string> = {
-  CREATED: "bg-[rgba(96,165,250,0.12)] text-[#60A5FA] border border-[rgba(96,165,250,0.3)]",
-  COMPLETED: "bg-[rgba(52,211,153,0.12)] text-[#34D399] border border-[rgba(52,211,153,0.3)]",
-  CANCELLED: "bg-[rgba(251,113,133,0.12)] text-[#FB7185] border border-[rgba(251,113,133,0.3)]",
-};

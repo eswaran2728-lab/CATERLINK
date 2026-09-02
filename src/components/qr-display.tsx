@@ -4,16 +4,16 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 
 interface QrDisplayProps {
-  /** Signed HMAC token generated server-side; expires after 24 hours. */
+  /** VECTA-minted signed token (e.g. "CATERING.<uuid>.<expiry>.<hmac>"); expires after 24 hours. */
   token: string;
   transactionNumber: string;
   size?: number;
 }
 
 /**
- * Renders the transaction QR pass. Payload: {"t":"<signed token>"} — the same
- * code is scanned at every checkpoint and validated server-side (signature,
- * expiry, and workflow order) before any checkpoint page is shown.
+ * Renders the transaction QR pass. The qrToken string from VECTA's mint
+ * endpoint is encoded verbatim — no JSON wrapper — per the CaterLink<->VECTA
+ * Forms Integration Contract; VECTA's Scan feature expects the raw string.
  *
  * The QR itself stays dark-modules-on-white — real scanners need that
  * contrast — but sits in a dark, amber-glow panel matching the rest of
@@ -25,7 +25,7 @@ export function QrDisplay({ token, transactionNumber, size = 240 }: QrDisplayPro
   const [dataUrl, setDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    QRCode.toDataURL(JSON.stringify({ t: token }), {
+    QRCode.toDataURL(token, {
       width: size,
       margin: 2,
       errorCorrectionLevel: "M",

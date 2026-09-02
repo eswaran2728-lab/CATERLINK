@@ -3,10 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { generateClQrToken } from "@/lib/cl-qr-token";
+import { mintQrToken } from "@/lib/vecta-api";
 import { QrDisplay } from "@/components/qr-display";
 import { Button } from "@/components/ui/button";
-import type { ClTransaction } from "@/lib/database.types";
 
 export const metadata: Metadata = { title: "QR Pass — CaterLink" };
 export const dynamic = "force-dynamic";
@@ -16,13 +15,39 @@ export default async function QrPassPage({ params }: { params: Promise<{ id: str
   await requireProfile();
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("cl_transactions")
-    .select("id, reference_number")
-    .eq("id", id)
-    .single();
-  if (!data) notFound();
-  const transaction = data as Pick<ClTransaction, "id" | "reference_number">;
+
+  const [txRes, vendorTxRes] = await Promise.all([
+    supabase.from("transactions").select("id, transaction_number, qr_token").eq("id", id).maybeSingle(),
+    supabase.from("vendor_transactions").select("id, transaction_number, qr_token").eq("id", id).maybeSingle(),
+  ]);
+
+  const record = txRes.data ?? vendorTxRes.data;
+  if (!record) notFound();
+  const isVendor = !txRes.data;
+
+  let qrToken = record.qr_token;
+  if (!qrToken) {
+    // Creation-time mint can fail transiently (VECTA unreachable) — retry
+    // on view instead of leaving the driver stuck with no QR pass at all.
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session) {
+      try {
+        qrToken = await mintQrToken({
+          transactionId: record.id,
+          type: isVendor ? "VENDOR" : "CATERING",
+          accessToken: session.access_token,
+        });
+        await supabase
+          .from(isVendor ? "vendor_transactions" : "transactions")
+          .update({ qr_token: qrToken })
+          .eq("id", record.id);
+      } catch {
+        qrToken = null;
+      }
+    }
+  }
 
   return (
     <div className="mx-auto flex max-w-md flex-col items-center gap-6 py-8 text-center">
@@ -33,17 +58,19 @@ export default async function QrPassPage({ params }: { params: Promise<{ id: str
         </p>
       </div>
 
-      <QrDisplay
-        token={generateClQrToken(transaction.id)}
-        transactionNumber={transaction.reference_number}
-        size={280}
-      />
+      {qrToken ? (
+        <QrDisplay token={qrToken} transactionNumber={record.transaction_number} size={280} />
+      ) : (
+        <p role="alert" className="text-sm font-medium text-[#FB7185]">
+          Could not generate the QR pass — VECTA may be unreachable. Reload this page to retry.
+        </p>
+      )}
 
       <p className="text-xs text-muted-foreground">
         If the scanner fails, staff can enter the reference number above manually.
       </p>
 
-      <Link href={`/${transaction.id}`} className="print:hidden">
+      <Link href={`/${record.id}`} className="print:hidden">
         <Button variant="outline">View status</Button>
       </Link>
     </div>

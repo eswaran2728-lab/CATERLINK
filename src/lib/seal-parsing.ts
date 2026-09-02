@@ -1,9 +1,10 @@
 import type { SealColor, SealType } from "./database.types";
 
 /**
- * Pure helpers pulled out of cl-transactions.ts (a "use server" file, which
- * Next.js requires to export only async server actions) so they can be
- * unit tested directly.
+ * Pure helpers shared by the transaction-creation server actions (which
+ * live in "use server" files — Next.js requires those to export only
+ * async server actions, so this logic lives here instead) so they can
+ * also be unit tested directly.
  */
 
 export const SEAL_TYPES: SealType[] = ["TRUCK_SEAL", "TROLLEY", "OTHER"];

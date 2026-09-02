@@ -12,8 +12,15 @@ export interface RegisterState {
  * registerStaff. Every other CaterLink role (warehouse_pic,
  * post2_avsec, post6_avsec, hub_avsec, receiver) already has a VECTA
  * account in the same Supabase Auth project — they sign in directly,
- * no registration needed. Only driver_vendor has no prior account
- * anywhere, so this is the only role this form ever creates.
+ * no registration needed.
+ *
+ * Registers with role 'vendor' — VECTA's own pre-existing role, per the
+ * CaterLink<->VECTA Forms Integration Contract. CaterLink writes vendor
+ * transactions directly into VECTA's vendor_transactions/vendor_part_a
+ * tables, whose RLS insert policies check current_user_role() = 'vendor'
+ * specifically (not the CaterLink-only 'driver_vendor' role used during
+ * the earlier cl_-tables prototype) — a self-registered account needs
+ * this exact role for its own transactions to be insertable at all.
  *
  * Creates a real Supabase Auth account right away (any email the
  * driver already uses — no domain/whitelist restriction) but the
@@ -52,7 +59,7 @@ export async function registerStaff(_prev: RegisterState, formData: FormData): P
     name,
     staff_id: staffId,
     email,
-    role: "driver_vendor",
+    role: "vendor",
     status: "pending",
   });
 

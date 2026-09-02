@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function NewDeliveryPage() {
   const profile = await requireProfile();
-  if (profile.role !== "warehouse_pic" && profile.role !== "driver_vendor") {
+  if (profile.role !== "warehouse_pic" && profile.role !== "vendor") {
     redirect("/");
   }
 
@@ -18,12 +18,12 @@ export default async function NewDeliveryPage() {
       <div className="space-y-1">
         <h1 className="font-heading text-2xl font-bold tracking-tight">New Delivery</h1>
         <p className="text-sm text-muted-foreground">
-          A reference number and QR pass are generated on submit — VECTA handles checkpoint scanning
-          from here; the final checkpoint signs off back in CaterLink.
+          A reference number and QR pass are generated on submit — VECTA handles everything from
+          checkpoint scanning through completion from here.
         </p>
       </div>
       {profile.role === "warehouse_pic" ? (
-        <TransactionForm certifyingName={profile.name} certifyingId={profile.staff_id} />
+        <TransactionForm picName={profile.name} picStaffId={profile.staff_id} />
       ) : (
         <VendorSupplyForm />
       )}

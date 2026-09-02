@@ -1,8 +1,14 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { createClTransaction, type ActionState } from "@/lib/actions/cl-transactions";
-import { CL_CREATABLE_ROUTES, CARGO_TYPE_LABELS, CARGO_TYPES, ROUTE_LABELS_CL } from "@/lib/constants";
+import { createTransaction, type ActionState } from "@/lib/actions/transactions";
+import {
+  CARGO_TYPE_LABELS,
+  CARGO_TYPES,
+  MOVEMENT_TYPES,
+  MOVEMENT_TYPE_LABELS,
+  type MovementType,
+} from "@/lib/constants";
 import { getMissingTransactionRequirements } from "@/lib/form-validation";
 import { getMissingIfcsfFormAFields } from "@/lib/form-a-validation";
 import { Button } from "@/components/ui/button";
@@ -13,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { SealEditor, type SealDraft } from "@/components/seal-editor";
 import { SignatureField } from "@/components/signature-pad";
-import type { CargoType, ClRoute } from "@/lib/database.types";
+import type { CargoType, HubDestination } from "@/lib/database.types";
 
 const initialState: ActionState = { error: null };
 
@@ -21,35 +27,40 @@ const initialState: ActionState = { error: null };
 // inbox; falls back to a generic "contact your fleet admin" line when unset.
 const FLEET_ADMIN_EMAIL = process.env.NEXT_PUBLIC_FLEET_ADMIN_EMAIL;
 
+const HUB_DESTINATION_LABELS: Record<HubDestination, string> = {
+  PEN: "Penang (PEN)",
+  JHB: "Johor Bahru (JHB)",
+  NILAI: "Nilai",
+};
+
 interface TransactionFormProps {
-  /** Defaults for the IFCSF Part A certifying-staff fields — the logged-in driver, editable/confirmable. */
-  certifyingName: string;
-  certifyingId: string;
+  /** Defaults for the IFCSF Part A PIC fields — the logged-in driver, editable/confirmable. */
+  picName: string;
+  picStaffId: string;
 }
 
-export function TransactionForm({ certifyingName: defaultName, certifyingId: defaultId }: TransactionFormProps) {
-  const [state, formAction, pending] = useActionState(createClTransaction, initialState);
-  const [route, setRoute] = useState<ClRoute | "">("");
+export function TransactionForm({ picName: defaultName, picStaffId: defaultId }: TransactionFormProps) {
+  const [state, formAction, pending] = useActionState(createTransaction, initialState);
+  const [movementType, setMovementType] = useState<MovementType | "">("");
+  const [hubDestination, setHubDestination] = useState<HubDestination | "">("");
   const [searchDone, setSearchDone] = useState(false);
   const [seals, setSeals] = useState<SealDraft[]>([
     { seal_number: "", seal_type: "TRUCK_SEAL", seal_color: "" },
   ]);
   const [cargoTypes, setCargoTypes] = useState<CargoType[]>([]);
 
-  // IFCSF Part A (AA/SEC/F/010) — station, in-flight supplies breakdown,
-  // certifying staff, and signature. Required for every movement type
-  // creatable here (all are IFCSF Outbound/Inbound variants).
   const [station, setStation] = useState("");
   const [carts, setCarts] = useState("");
   const [smu, setSmu] = useState("");
   const [pallets, setPallets] = useState("");
   const [boxes, setBoxes] = useState("");
   const [ovenRack, setOvenRack] = useState("");
-  const [certifyingName, setCertifyingName] = useState(defaultName);
-  const [certifyingId, setCertifyingId] = useState(defaultId);
+  const [picName, setPicName] = useState(defaultName);
+  const [picStaffId, setPicStaffId] = useState(defaultId);
   const [signature, setSignature] = useState<string | null>(null);
 
-  const isInbound = route === "INBOUND";
+  const isInbound = movementType === "INBOUND";
+  const isHub = movementType === "HUB";
 
   const toggleCargoType = (type: CargoType) => {
     setCargoTypes((prev) => (prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]));
@@ -59,11 +70,12 @@ export function TransactionForm({ certifyingName: defaultName, certifyingId: def
 
   const missingRequirements = [
     ...getMissingTransactionRequirements({
-      route,
+      route: movementType,
       cargoTypesCount: cargoTypes.length,
       sealsReady,
       vehicleSearchCompleted: searchDone,
     }),
+    ...(isHub && !hubDestination ? ["hub destination"] : []),
     ...getMissingIfcsfFormAFields({
       station,
       carts,
@@ -71,8 +83,8 @@ export function TransactionForm({ certifyingName: defaultName, certifyingId: def
       pallets,
       boxes,
       ovenRack,
-      certifyingName,
-      certifyingId,
+      certifyingName: picName,
+      certifyingId: picStaffId,
       hasSignature: signature !== null,
     }),
   ];
@@ -83,18 +95,46 @@ export function TransactionForm({ certifyingName: defaultName, certifyingId: def
       <CardContent className="space-y-5 pt-6">
         <form action={formAction} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="route">Movement Type</Label>
-            <Select id="route" name="route" value={route} onChange={(e) => setRoute(e.target.value as ClRoute)} required>
+            <Label htmlFor="movement_type">Movement Type</Label>
+            <Select
+              id="movement_type"
+              name="movement_type"
+              value={movementType}
+              onChange={(e) => setMovementType(e.target.value as MovementType)}
+              required
+            >
               <option value="" disabled>
                 Select…
               </option>
-              {CL_CREATABLE_ROUTES.map((r) => (
-                <option key={r} value={r}>
-                  {ROUTE_LABELS_CL[r]}
+              {MOVEMENT_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {MOVEMENT_TYPE_LABELS[t]}
                 </option>
               ))}
             </Select>
           </div>
+
+          {isHub ? (
+            <div className="space-y-2">
+              <Label htmlFor="hub_destination">Hub Destination</Label>
+              <Select
+                id="hub_destination"
+                name="hub_destination"
+                value={hubDestination}
+                onChange={(e) => setHubDestination(e.target.value as HubDestination)}
+                required
+              >
+                <option value="" disabled>
+                  Select…
+                </option>
+                {(Object.entries(HUB_DESTINATION_LABELS) as [HubDestination, string][]).map(([v, l]) => (
+                  <option key={v} value={v}>
+                    {l}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          ) : null}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -202,29 +242,23 @@ export function TransactionForm({ certifyingName: defaultName, certifyingId: def
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="certifying_name">Certifying Staff Name</Label>
-                <Input
-                  id="certifying_name"
-                  name="certifying_name"
-                  value={certifyingName}
-                  onChange={(e) => setCertifyingName(e.target.value)}
-                  required
-                />
+                <Label htmlFor="pic_name">PIC Name</Label>
+                <Input id="pic_name" name="pic_name" value={picName} onChange={(e) => setPicName(e.target.value)} required />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="certifying_id">Certifying Staff ID</Label>
+                <Label htmlFor="pic_staff_id">PIC Staff ID</Label>
                 <Input
-                  id="certifying_id"
-                  name="certifying_id"
-                  value={certifyingId}
-                  onChange={(e) => setCertifyingId(e.target.value)}
+                  id="pic_staff_id"
+                  name="pic_staff_id"
+                  value={picStaffId}
+                  onChange={(e) => setPicStaffId(e.target.value)}
                   required
                   className="font-mono"
                 />
               </div>
             </div>
 
-            <SignatureField label="Certifying Signature" onChange={setSignature} />
+            <SignatureField label="PIC Signature" onChange={setSignature} />
             <input type="hidden" name="signature" value={signature ?? ""} />
 
             <p className="text-xs text-muted-foreground">
