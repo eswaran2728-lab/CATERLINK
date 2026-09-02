@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { createClTransaction, type ActionState } from "@/lib/actions/cl-transactions";
 import { CL_CREATABLE_ROUTES, CARGO_TYPE_LABELS, CARGO_TYPES, ROUTE_LABELS_CL } from "@/lib/constants";
 import { getMissingTransactionRequirements } from "@/lib/form-validation";
+import { getMissingIfcsfFormAFields } from "@/lib/form-a-validation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { BigCheckbox } from "@/components/ui/checkbox";
@@ -11,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { SealEditor, type SealDraft } from "@/components/seal-editor";
+import { SignatureField } from "@/components/signature-pad";
 import type { CargoType, ClRoute } from "@/lib/database.types";
 
 const initialState: ActionState = { error: null };
@@ -19,7 +21,13 @@ const initialState: ActionState = { error: null };
 // inbox; falls back to a generic "contact your fleet admin" line when unset.
 const FLEET_ADMIN_EMAIL = process.env.NEXT_PUBLIC_FLEET_ADMIN_EMAIL;
 
-export function TransactionForm() {
+interface TransactionFormProps {
+  /** Defaults for the IFCSF Part A certifying-staff fields — the logged-in driver, editable/confirmable. */
+  certifyingName: string;
+  certifyingId: string;
+}
+
+export function TransactionForm({ certifyingName: defaultName, certifyingId: defaultId }: TransactionFormProps) {
   const [state, formAction, pending] = useActionState(createClTransaction, initialState);
   const [route, setRoute] = useState<ClRoute | "">("");
   const [searchDone, setSearchDone] = useState(false);
@@ -28,18 +36,46 @@ export function TransactionForm() {
   ]);
   const [cargoTypes, setCargoTypes] = useState<CargoType[]>([]);
 
+  // IFCSF Part A (AA/SEC/F/010) — station, in-flight supplies breakdown,
+  // certifying staff, and signature. Required for every movement type
+  // creatable here (all are IFCSF Outbound/Inbound variants).
+  const [station, setStation] = useState("");
+  const [carts, setCarts] = useState("");
+  const [smu, setSmu] = useState("");
+  const [pallets, setPallets] = useState("");
+  const [boxes, setBoxes] = useState("");
+  const [ovenRack, setOvenRack] = useState("");
+  const [certifyingName, setCertifyingName] = useState(defaultName);
+  const [certifyingId, setCertifyingId] = useState(defaultId);
+  const [signature, setSignature] = useState<string | null>(null);
+
+  const isInbound = route === "INBOUND";
+
   const toggleCargoType = (type: CargoType) => {
     setCargoTypes((prev) => (prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]));
   };
 
   const sealsReady = seals.length > 0 && seals.every((s) => s.seal_number.trim() !== "" && s.seal_color !== "");
 
-  const missingRequirements = getMissingTransactionRequirements({
-    route,
-    cargoTypesCount: cargoTypes.length,
-    sealsReady,
-    vehicleSearchCompleted: searchDone,
-  });
+  const missingRequirements = [
+    ...getMissingTransactionRequirements({
+      route,
+      cargoTypesCount: cargoTypes.length,
+      sealsReady,
+      vehicleSearchCompleted: searchDone,
+    }),
+    ...getMissingIfcsfFormAFields({
+      station,
+      carts,
+      smu,
+      pallets,
+      boxes,
+      ovenRack,
+      certifyingName,
+      certifyingId,
+      hasSignature: signature !== null,
+    }),
+  ];
   const isWhitelistViolation = state.error?.startsWith("WHITELIST_VIOLATION:") ?? false;
 
   return (
@@ -62,7 +98,7 @@ export function TransactionForm() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="vehicle_number">Vehicle Number</Label>
+              <Label htmlFor="vehicle_number">{isInbound ? "Vehicle Registration No" : "Vehicle Number"}</Label>
               <Input id="vehicle_number" name="vehicle_number" autoCapitalize="characters" required className="font-mono" />
             </div>
             <div className="space-y-2">
@@ -108,6 +144,11 @@ export function TransactionForm() {
 
           <SealEditor seals={seals} onChange={setSeals} />
           <input type="hidden" name="seals" value={JSON.stringify(seals)} />
+          {isInbound ? (
+            <p className="-mt-3 text-xs text-muted-foreground">
+              The truck seal above is the &quot;Outbound Seal Serial No&quot; on the IFCSF Inbound form.
+            </p>
+          ) : null}
 
           <BigCheckbox
             id="vehicle_search_completed"
@@ -118,6 +159,78 @@ export function TransactionForm() {
             onCheckedChange={setSearchDone}
             required
           />
+
+          <div className="space-y-4 rounded-xl border border-border p-4">
+            <div>
+              <h3 className="font-heading text-sm font-semibold">IFCSF Part A — In-flight Warehouse</h3>
+              <p className="text-xs text-muted-foreground">
+                Certifies the consignment has been searched and contains no prohibited article.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="station">Station</Label>
+              <Input id="station" name="station" value={station} onChange={(e) => setStation(e.target.value)} required />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              {(
+                [
+                  ["carts", "Carts", carts, setCarts],
+                  ["smu", "SMU", smu, setSmu],
+                  ["pallets", "Pallets", pallets, setPallets],
+                  ["boxes", "Boxes", boxes, setBoxes],
+                  ["oven_rack", "Oven Rack", ovenRack, setOvenRack],
+                ] as const
+              ).map(([name, label, value, setValue]) => (
+                <div key={name} className="space-y-1.5">
+                  <Label htmlFor={name}>{label}</Label>
+                  <Input
+                    id={name}
+                    name={name}
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    step={1}
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    required
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="certifying_name">Certifying Staff Name</Label>
+                <Input
+                  id="certifying_name"
+                  name="certifying_name"
+                  value={certifyingName}
+                  onChange={(e) => setCertifyingName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="certifying_id">Certifying Staff ID</Label>
+                <Input
+                  id="certifying_id"
+                  name="certifying_id"
+                  value={certifyingId}
+                  onChange={(e) => setCertifyingId(e.target.value)}
+                  required
+                  className="font-mono"
+                />
+              </div>
+            </div>
+
+            <SignatureField label="Certifying Signature" onChange={setSignature} />
+            <input type="hidden" name="signature" value={signature ?? ""} />
+
+            <p className="text-xs text-muted-foreground">
+              Date/time is recorded automatically at submission — no need to enter it.
+            </p>
+          </div>
 
           {state.error ? (
             isWhitelistViolation ? (

@@ -9,6 +9,7 @@ import { generateClQrToken } from "@/lib/cl-qr-token";
 import { generateClCompletionPdf } from "@/lib/cl-pdf";
 import { ROUTE_SIGNOFF_ROLE } from "@/lib/constants";
 import { parseSealDrafts, namesMatch, buildWhitelistViolationMessage } from "@/lib/seal-parsing";
+import { parseNonNegativeInt, getMissingIfcsfFormAFields, getMissingVendorFormAFields } from "@/lib/form-a-validation";
 import type { CargoType, ClRoute } from "@/lib/database.types";
 import type { ClSeal } from "@/lib/database.types";
 
@@ -59,6 +60,20 @@ export async function createClTransaction(_prev: ActionState, formData: FormData
   const cargoTypes = formData.getAll("cargo_types").map(String) as CargoType[];
   const seals = parseSealDrafts(str(formData, "seals"));
 
+  // IFCSF Part A (AA/SEC/F/010) — station header field + in-flight
+  // warehouse staff certification, required for every non-vendor route
+  // (Inbound reuses vehicle_number/seals already required above for its
+  // "Vehicle Registration No"/"Outbound Seal Serial No" fields).
+  const station = str(formData, "station");
+  const carts = str(formData, "carts");
+  const smu = str(formData, "smu");
+  const pallets = str(formData, "pallets");
+  const boxes = str(formData, "boxes");
+  const ovenRack = str(formData, "oven_rack");
+  const certifyingName = str(formData, "certifying_name");
+  const certifyingId = str(formData, "certifying_id");
+  const signature = str(formData, "signature");
+
   if (!CL_ROUTES.includes(route) || route === "VENDOR_SUPPLY") {
     return { error: "Select a valid movement type." };
   }
@@ -79,6 +94,21 @@ export async function createClTransaction(_prev: ActionState, formData: FormData
   }
   if (!vehicleSearchCompleted) {
     return { error: "Vehicle search must be completed before dispatch." };
+  }
+
+  const missingFormA = getMissingIfcsfFormAFields({
+    station,
+    carts,
+    smu,
+    pallets,
+    boxes,
+    ovenRack,
+    certifyingName,
+    certifyingId,
+    hasSignature: signature.length > 0,
+  });
+  if (missingFormA.length > 0) {
+    return { error: `Complete Part A of the IFCSF form: ${missingFormA.join(", ")}.` };
   }
 
   const supabase = await createClient();
@@ -108,6 +138,7 @@ export async function createClTransaction(_prev: ActionState, formData: FormData
     .insert({
       id: txId,
       route,
+      station,
       vehicle_number: vehicleNumber,
       driver_name: driverName,
       driver_id: driverId,
@@ -130,6 +161,29 @@ export async function createClTransaction(_prev: ActionState, formData: FormData
     return { error: `Seals could not be saved: ${sealsError.message}` };
   }
 
+  let signaturePath: string;
+  try {
+    signaturePath = (await uploadDataUrl("signatures", signature, "cl-form-a")).path;
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Signature upload failed." };
+  }
+
+  const { error: formAError } = await supabase.from("cl_form_a").insert({
+    transaction_id: tx.id,
+    carts: parseNonNegativeInt(carts),
+    smu: parseNonNegativeInt(smu),
+    pallets: parseNonNegativeInt(pallets),
+    boxes: parseNonNegativeInt(boxes),
+    oven_rack: parseNonNegativeInt(ovenRack),
+    supplies_description: null,
+    certifying_name: certifyingName,
+    certifying_id: certifyingId,
+    signature_url: signaturePath,
+  });
+  if (formAError) {
+    return { error: `Part A could not be saved: ${formAError.message}` };
+  }
+
   revalidatePath("/");
   redirect(`/${tx.id}/qr?created=1`);
 }
@@ -149,9 +203,18 @@ export async function createVendorSupplyTransaction(
   const driverName = str(formData, "driver_name");
   const nricNumber = str(formData, "nric_number");
   const sealNumber = str(formData, "seal_number").toUpperCase();
+  const suppliesDescription = str(formData, "supplies_description");
+  const signature = str(formData, "signature");
 
   if (!driverName || !nricNumber || !sealNumber) {
     return { error: "Driver name, NRIC number and seal number are all required." };
+  }
+  const missingFormA = getMissingVendorFormAFields({
+    suppliesDescription,
+    hasSignature: signature.length > 0,
+  });
+  if (missingFormA.length > 0) {
+    return { error: `Complete Part A of the Vendor Supplies form: ${missingFormA.join(", ")}.` };
   }
 
   const supabase = await createClient();
@@ -184,6 +247,29 @@ export async function createVendorSupplyTransaction(
   });
   if (sealError) {
     return { error: `Seal could not be saved: ${sealError.message}` };
+  }
+
+  let signaturePath: string;
+  try {
+    signaturePath = (await uploadDataUrl("signatures", signature, "cl-form-a")).path;
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Signature upload failed." };
+  }
+
+  const { error: formAError } = await supabase.from("cl_form_a").insert({
+    transaction_id: tx.id,
+    carts: null,
+    smu: null,
+    pallets: null,
+    boxes: null,
+    oven_rack: null,
+    supplies_description: suppliesDescription,
+    certifying_name: null,
+    certifying_id: null,
+    signature_url: signaturePath,
+  });
+  if (formAError) {
+    return { error: `Part A could not be saved: ${formAError.message}` };
   }
 
   revalidatePath("/");

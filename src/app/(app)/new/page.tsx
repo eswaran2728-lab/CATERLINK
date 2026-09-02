@@ -22,7 +22,11 @@ export default async function NewDeliveryPage() {
           from here; the final checkpoint signs off back in CaterLink.
         </p>
       </div>
-      {profile.role === "warehouse_pic" ? <TransactionForm /> : <VendorSupplyForm />}
+      {profile.role === "warehouse_pic" ? (
+        <TransactionForm certifyingName={profile.name} certifyingId={profile.staff_id} />
+      ) : (
+        <VendorSupplyForm />
+      )}
     </div>
   );
 }

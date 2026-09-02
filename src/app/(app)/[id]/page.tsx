@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CL_STATUS_COLORS, CL_STATUS_LABELS, ROUTE_LABELS_CL, ROUTE_SIGNOFF_ROLE } from "@/lib/constants";
 import { formatDateTime } from "@/lib/utils";
-import type { ClSeal, ClSignoff, ClTransaction } from "@/lib/database.types";
+import type { ClFormA, ClSeal, ClSignoff, ClTransaction } from "@/lib/database.types";
 import { LiveRefresh } from "./live-refresh";
 import { Row, Sig } from "./status-rows";
 import { CancelForm } from "./cancel-form";
@@ -26,16 +26,19 @@ export default async function TransactionStatusPage({ params }: { params: Promis
   if (!txRow) notFound();
   const transaction = txRow as ClTransaction;
 
-  const [sealsRes, signoffRes] = await Promise.all([
+  const [sealsRes, signoffRes, formARes] = await Promise.all([
     supabase.from("cl_seals").select("*").eq("transaction_id", id),
     supabase.from("cl_signoffs").select("*").eq("transaction_id", id).maybeSingle(),
+    supabase.from("cl_form_a").select("*").eq("transaction_id", id).maybeSingle(),
   ]);
   const seals = (sealsRes.data ?? []) as ClSeal[];
   const signoff = signoffRes.data as ClSignoff | null;
+  const formA = formARes.data as ClFormA | null;
 
-  const [signatureUrl, completedFormUrl] = await Promise.all([
+  const [signatureUrl, completedFormUrl, formASignatureUrl] = await Promise.all([
     signedUrl("signatures", signoff?.signature_url ?? null),
     signedUrl("completed-forms", transaction.completed_form_url),
+    signedUrl("signatures", formA?.signature_url ?? null),
   ]);
 
   const requiredSignoffRole = ROUTE_SIGNOFF_ROLE[transaction.route];
@@ -81,12 +84,48 @@ export default async function TransactionStatusPage({ params }: { params: Promis
 
       <Card>
         <CardContent className="space-y-1 pt-6">
+          {transaction.station ? <Row label="Station" value={transaction.station} /> : null}
           <Row label="Vehicle" value={transaction.vehicle_number} />
           <Row label="Driver" value={`${transaction.driver_name}${transaction.driver_id ? ` (${transaction.driver_id})` : ""}`} />
           <Row label="Created" value={formatDateTime(transaction.created_at)} />
           <Row label="Completed" value={formatDateTime(transaction.completed_at)} />
         </CardContent>
       </Card>
+
+      {formA ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Form A — completed by {transaction.route === "VENDOR_SUPPLY" ? transaction.driver_name : formA.certifying_name} at{" "}
+              {formatDateTime(formA.certified_at)}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              {transaction.route === "VENDOR_SUPPLY"
+                ? "Vendor Supplies Security Form (AA/SEC/F/019) — Part A only. Parts B (AirAsia Security) and C (Warehouse) are completed separately in VECTA."
+                : "In-flight Catering Security Form (AA/SEC/F/010) — Part A only. Parts B, C and D are completed separately in VECTA."}
+            </p>
+            {transaction.route === "VENDOR_SUPPLY" ? (
+              <>
+                <Row label="Driver" value={transaction.driver_name} />
+                <Row label="NRIC Number" value={transaction.driver_id} />
+                <Row label="In-flight Supplies" value={formA.supplies_description} />
+              </>
+            ) : (
+              <>
+                <Row label="Certifying Staff" value={`${formA.certifying_name} (${formA.certifying_id})`} />
+                <Row label="Carts" value={formA.carts} />
+                <Row label="SMU" value={formA.smu} />
+                <Row label="Pallets" value={formA.pallets} />
+                <Row label="Boxes" value={formA.boxes} />
+                <Row label="Oven Rack" value={formA.oven_rack} />
+              </>
+            )}
+            <Sig url={formASignatureUrl} label="Signature" />
+          </CardContent>
+        </Card>
+      ) : null}
 
       {seals.length > 0 ? (
         <Card>

@@ -462,6 +462,35 @@ export type ClTransaction = {
   cancelled_at: string | null;
   cancelled_reason: string | null;
   cancelled_by: string | null;
+  /** IFCSF header field (Parts A-D all share it); null for VENDOR_SUPPLY. */
+  station: string | null;
+};
+
+/**
+ * Part A of the paper AVSEC forms (AA/SEC/F/010 IFCSF, AA/SEC/F/019
+ * Vendor Supplies) — the driver/warehouse-side certification captured at
+ * transaction-creation time. Parts B/C/D are VECTA's, filled later
+ * against the same transaction_id. Which columns are required depends on
+ * the transaction's route — see cl_enforce_form_a() in
+ * supabase/migrations/20260828000002_caterlink_form_a.sql.
+ */
+export type ClFormA = {
+  id: string;
+  transaction_id: string;
+  /** IFCSF only (Outbound + Inbound) — total in-flight supplies breakdown. */
+  carts: number | null;
+  smu: number | null;
+  pallets: number | null;
+  boxes: number | null;
+  oven_rack: number | null;
+  /** Vendor Supplies only — "IN-FLIGHT SUPPLIES CARTS/CONTAINERS/BINS". */
+  supplies_description: string | null;
+  /** IFCSF only — the vendor form's certifier is driver_name/driver_id on cl_transactions instead. */
+  certifying_name: string | null;
+  certifying_id: string | null;
+  signature_url: string;
+  certified_at: string;
+  created_at: string;
 };
 
 export type ClSeal = {
@@ -818,6 +847,7 @@ export type Database = {
           | "cancelled_at"
           | "cancelled_reason"
           | "cancelled_by"
+          | "station"
         > & {
           id?: string;
           reference_number?: string;
@@ -830,6 +860,7 @@ export type Database = {
           cancelled_at?: string | null;
           cancelled_reason?: string | null;
           cancelled_by?: string | null;
+          station?: string | null;
         };
         Update: Partial<ClTransaction>;
         Relationships: [];
@@ -843,6 +874,16 @@ export type Database = {
       cl_signoffs: {
         Row: ClSignoff;
         Insert: Omit<ClSignoff, "id" | "signed_at"> & { id?: string; signed_at?: string };
+        Update: never;
+        Relationships: [];
+      };
+      cl_form_a: {
+        Row: ClFormA;
+        Insert: Omit<ClFormA, "id" | "certified_at" | "created_at"> & {
+          id?: string;
+          certified_at?: string;
+          created_at?: string;
+        };
         Update: never;
         Relationships: [];
       };
