@@ -900,6 +900,14 @@ export type Database = {
         Args: { p_reason?: string | null };
         Returns: number;
       };
+      set_transaction_qr_token: {
+        Args: { p_transaction_id: string; p_qr_token: string };
+        Returns: void;
+      };
+      set_vendor_transaction_qr_token: {
+        Args: { p_transaction_id: string; p_qr_token: string };
+        Returns: void;
+      };
       cl_next_reference_number: { Args: Record<string, never>; Returns: string };
       cl_cancel_transaction: {
         Args: { p_transaction_id: string; p_reason: string };

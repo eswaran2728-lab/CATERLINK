@@ -39,12 +39,16 @@ export default async function QrPassPage({ params }: { params: Promise<{ id: str
           type: isVendor ? "VENDOR" : "CATERING",
           accessToken: session.access_token,
         });
-        await supabase
-          .from(isVendor ? "vendor_transactions" : "transactions")
-          .update({ qr_token: qrToken })
-          .eq("id", record.id);
       } catch {
         qrToken = null;
+      }
+      if (qrToken) {
+        // Best-effort persist — a failure here shouldn't hide the token
+        // we already have in hand and can still show the driver.
+        await supabase.rpc(isVendor ? "set_vendor_transaction_qr_token" : "set_transaction_qr_token", {
+          p_transaction_id: record.id,
+          p_qr_token: qrToken,
+        });
       }
     }
   }

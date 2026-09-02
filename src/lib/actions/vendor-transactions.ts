@@ -75,7 +75,11 @@ export async function createVendorTransaction(_prev: ActionState, formData: Form
 
   try {
     const qrToken = await mintQrToken({ transactionId: tx.id, type: "VENDOR", accessToken: session.access_token });
-    await supabase.from("vendor_transactions").update({ qr_token: qrToken }).eq("id", tx.id);
+    const { error: qrError } = await supabase.rpc("set_vendor_transaction_qr_token", {
+      p_transaction_id: tx.id,
+      p_qr_token: qrToken,
+    });
+    if (qrError) throw new Error(`QR minted but could not be saved: ${qrError.message}`);
   } catch (e) {
     return {
       error:
