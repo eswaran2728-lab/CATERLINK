@@ -57,7 +57,7 @@ export function VendorSupplyForm() {
           </p>
 
           {state.error ? (
-            <p role="alert" className="text-sm font-medium text-[#FB7185]">
+            <p role="alert" className="text-sm font-medium text-[#DC2626]">
               {state.error}
             </p>
           ) : null}

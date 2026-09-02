@@ -134,7 +134,7 @@ export default async function TransactionStatusPage({ params }: { params: Promis
         {transaction.status === "ESCALATED" ? (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base text-[#FB7185]">Escalated</CardTitle>
+              <CardTitle className="text-base text-[#DC2626]">Escalated</CardTitle>
             </CardHeader>
             <CardContent className="space-y-1">
               <Row label="Reason" value={transaction.escalation_reason} />

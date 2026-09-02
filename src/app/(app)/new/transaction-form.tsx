@@ -272,7 +272,7 @@ export function TransactionForm({ picName: defaultName, picStaffId: defaultId }:
                 role="alert"
                 className="space-y-2 rounded-xl border border-[rgba(251,113,133,0.3)] bg-[rgba(251,113,133,0.08)] p-4"
               >
-                <p className="text-sm font-medium text-[#FB7185]">
+                <p className="text-sm font-medium text-[#DC2626]">
                   {state.error.replace(/^WHITELIST_VIOLATION:\s*/, "")}
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -293,14 +293,14 @@ export function TransactionForm({ picName: defaultName, picStaffId: defaultId }:
                 </p>
               </div>
             ) : (
-              <p role="alert" className="text-sm font-medium text-[#FB7185]">
+              <p role="alert" className="text-sm font-medium text-[#DC2626]">
                 {state.error}
               </p>
             )
           ) : null}
 
           {missingRequirements.length > 0 ? (
-            <p role="alert" className="text-sm font-medium text-[#FB923C]">
+            <p role="alert" className="text-sm font-medium text-[#EA580C]">
               Before you can submit, complete: {missingRequirements.join(", ")}.
             </p>
           ) : null}

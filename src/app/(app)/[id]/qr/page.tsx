@@ -65,7 +65,7 @@ export default async function QrPassPage({ params }: { params: Promise<{ id: str
       {qrToken ? (
         <QrDisplay token={qrToken} transactionNumber={record.transaction_number} size={280} />
       ) : (
-        <p role="alert" className="text-sm font-medium text-[#FB7185]">
+        <p role="alert" className="text-sm font-medium text-[#DC2626]">
           Could not generate the QR pass — VECTA may be unreachable. Reload this page to retry.
         </p>
       )}

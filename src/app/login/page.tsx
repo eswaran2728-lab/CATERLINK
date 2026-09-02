@@ -37,9 +37,9 @@ export default async function LoginPage({
               alt="AirAsia"
               width={64}
               height={66}
-              className="rounded-full object-cover ring-1 ring-white/10"
+              className="rounded-full object-cover ring-1 ring-black/10"
             />
-            <div className="h-8 w-px bg-white/10" />
+            <div className="h-8 w-px bg-border" />
             <Image src="/avsec-logo.png" alt="AVSEC" width={72} height={68} className="object-contain" />
           </div>
           <div className="relative text-center">
@@ -53,7 +53,7 @@ export default async function LoginPage({
         {error ? (
           <p
             role="alert"
-            className="mb-5 rounded-xl border border-[rgba(251,113,133,0.3)] bg-[rgba(251,113,133,0.1)] p-3 text-center text-sm font-medium text-[#FB7185]"
+            className="mb-5 rounded-xl border border-[rgba(251,113,133,0.3)] bg-[rgba(251,113,133,0.1)] p-3 text-center text-sm font-medium text-[#DC2626]"
           >
             {ERROR_MESSAGES[error] ?? "Sign-in failed. Please try again."}
           </p>
@@ -68,7 +68,7 @@ export default async function LoginPage({
           </Link>
         </p>
 
-        <p className="mt-8 text-center text-[10.5px] tracking-wide text-[#3A4459]">
+        <p className="mt-8 text-center text-[10.5px] tracking-wide text-muted-foreground">
           AirAsia-provisioned access · Shared backend with VECTA
         </p>
       </div>

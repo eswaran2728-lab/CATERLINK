@@ -16,10 +16,8 @@ interface QrDisplayProps {
  * Forms Integration Contract; VECTA's Scan feature expects the raw string.
  *
  * The QR itself stays dark-modules-on-white — real scanners need that
- * contrast — but sits in a dark, amber-glow panel matching the rest of
- * the app (the mockup's QR screen uses a light-on-dark decorative QR
- * graphic, which isn't scannable; this keeps the panel styling but not
- * the inverted QR colors).
+ * contrast — and sits in a pale amber-tinted panel matching the rest of
+ * the app.
  */
 export function QrDisplay({ token, transactionNumber, size = 240 }: QrDisplayProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
@@ -40,8 +38,8 @@ export function QrDisplay({ token, transactionNumber, size = 240 }: QrDisplayPro
         className="relative overflow-hidden rounded-[18px] border p-4"
         style={{
           borderColor: "rgba(245,166,35,0.3)",
-          background: "#0E1626",
-          boxShadow: "0 0 32px rgba(245,166,35,0.08)",
+          background: "#FFFBF3",
+          boxShadow: "0 0 32px rgba(245,166,35,0.12)",
         }}
       >
         {dataUrl ? (

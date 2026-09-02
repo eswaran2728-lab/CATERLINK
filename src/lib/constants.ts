@@ -80,22 +80,22 @@ export const ROLE_LABELS: Record<Role, string> = {
 };
 
 /**
- * Distinct color per role for the persistent header badge — dark-native
- * chips (translucent tint + tinted border), matching the approved
- * CaterLink mockups' status-pill style. CaterLink is dark-only, so
- * these deliberately have no light-mode variant.
+ * Distinct color per role for the persistent header badge — soft
+ * translucent-tint chips (tinted bg + tinted border), matching the
+ * approved CaterLink mockups' status-pill style. CaterLink is
+ * light-only, so these deliberately have no dark-mode variant.
  */
 export const ROLE_COLORS: Record<Role, string> = {
-  warehouse_pic: "bg-[rgba(129,140,248,0.12)] text-[#818CF8] border border-[rgba(129,140,248,0.3)]",
-  post2_avsec: "bg-[rgba(167,139,250,0.12)] text-[#A78BFA] border border-[rgba(167,139,250,0.3)]",
-  post6_avsec: "bg-[rgba(34,211,238,0.12)] text-[#22D3EE] border border-[rgba(34,211,238,0.3)]",
-  receiver: "bg-[rgba(45,212,191,0.12)] text-[#2DD4BF] border border-[rgba(45,212,191,0.3)]",
-  supervisor: "bg-[rgba(245,166,35,0.12)] text-[#F5A623] border border-[rgba(245,166,35,0.3)]",
-  enforcement: "bg-[rgba(232,121,249,0.12)] text-[#E879F9] border border-[rgba(232,121,249,0.3)]",
-  vendor: "bg-[rgba(163,230,53,0.12)] text-[#A3E635] border border-[rgba(163,230,53,0.3)]",
-  hub_avsec: "bg-[rgba(56,189,248,0.12)] text-[#38BDF8] border border-[rgba(56,189,248,0.3)]",
-  redq_avsec: "bg-[rgba(251,113,133,0.12)] text-[#FB7185] border border-[rgba(251,113,133,0.3)]",
-  driver_vendor: "bg-[rgba(245,166,35,0.12)] text-[#F5A623] border border-[rgba(245,166,35,0.3)]",
+  warehouse_pic: "bg-[rgba(79,70,229,0.1)] text-[#4F46E5] border border-[rgba(79,70,229,0.25)]",
+  post2_avsec: "bg-[rgba(124,58,237,0.1)] text-[#7C3AED] border border-[rgba(124,58,237,0.25)]",
+  post6_avsec: "bg-[rgba(8,145,178,0.1)] text-[#0891B2] border border-[rgba(8,145,178,0.25)]",
+  receiver: "bg-[rgba(13,148,136,0.1)] text-[#0D9488] border border-[rgba(13,148,136,0.25)]",
+  supervisor: "bg-[rgba(201,127,15,0.12)] text-[#C97F0F] border border-[rgba(201,127,15,0.3)]",
+  enforcement: "bg-[rgba(162,28,175,0.1)] text-[#A21CAF] border border-[rgba(162,28,175,0.25)]",
+  vendor: "bg-[rgba(77,124,15,0.1)] text-[#4D7C0F] border border-[rgba(77,124,15,0.25)]",
+  hub_avsec: "bg-[rgba(2,132,199,0.1)] text-[#0284C7] border border-[rgba(2,132,199,0.25)]",
+  redq_avsec: "bg-[rgba(220,38,38,0.1)] text-[#DC2626] border border-[rgba(220,38,38,0.25)]",
+  driver_vendor: "bg-[rgba(201,127,15,0.12)] text-[#C97F0F] border border-[rgba(201,127,15,0.3)]",
 };
 
 export const STATUS_LABELS: Record<TransactionStatus, string> = {
@@ -108,14 +108,14 @@ export const STATUS_LABELS: Record<TransactionStatus, string> = {
 };
 
 export const STATUS_COLORS: Record<TransactionStatus, string> = {
-  CREATED: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200",
-  INFLIGHT_POST_APPROVED: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200",
-  AIRPORT_POST_APPROVED: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200",
-  REDQ_RESEALED: "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200",
-  COMPLETED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200",
+  CREATED: "bg-blue-100 text-blue-800",
+  INFLIGHT_POST_APPROVED: "bg-amber-100 text-amber-800",
+  AIRPORT_POST_APPROVED: "bg-purple-100 text-purple-800",
+  REDQ_RESEALED: "bg-rose-100 text-rose-800",
+  COMPLETED: "bg-emerald-100 text-emerald-800",
   // Amber/orange, not red, so escalated status stays visually distinct
   // from the app's red primary brand color.
-  ESCALATED: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200",
+  ESCALATED: "bg-orange-100 text-orange-800",
 };
 
 /** Outbound-only routing chosen at Part A. INBOUND is always AIRCRAFT. */
@@ -140,8 +140,8 @@ export const DIRECTION_LABELS: Record<Direction, string> = {
 
 /** Matches the physical truck seal colors: blue outbound, green inbound. */
 export const DIRECTION_COLORS: Record<Direction, string> = {
-  OUTBOUND: "bg-blue-600 text-white dark:bg-blue-500",
-  INBOUND: "bg-green-600 text-white dark:bg-green-500",
+  OUTBOUND: "bg-blue-600 text-white",
+  INBOUND: "bg-green-600 text-white",
 };
 
 export const DELIVERY_LOCATION_LABELS: Record<DeliveryLocation, string> = {
@@ -198,10 +198,10 @@ export function lifecycleFor(incidentType: IncidentType): IncidentStatus[] {
 }
 
 export const INCIDENT_STATUS_COLORS: Record<IncidentStatus, string> = {
-  OPEN: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200",
-  UNDER_REVIEW: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200",
-  RESOLVED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200",
-  CLOSED: "bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+  OPEN: "bg-orange-100 text-orange-800",
+  UNDER_REVIEW: "bg-amber-100 text-amber-800",
+  RESOLVED: "bg-emerald-100 text-emerald-800",
+  CLOSED: "bg-gray-200 text-gray-700",
 };
 
 export const SEAL_TYPE_LABELS: Record<SealType, string> = {
@@ -217,9 +217,9 @@ export const SEAL_COLOR_LABELS: Record<SealColor, string> = {
 };
 
 export const SEAL_COLOR_BADGES: Record<SealColor, string> = {
-  BLUE: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200",
-  GREEN: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200",
-  OTHER: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200",
+  BLUE: "bg-blue-100 text-blue-800",
+  GREEN: "bg-green-100 text-green-800",
+  OTHER: "bg-gray-100 text-gray-800",
 };
 
 /**
@@ -251,10 +251,10 @@ export const VENDOR_STATUS_LABELS: Record<VendorTransactionStatus, string> = {
 };
 
 export const VENDOR_STATUS_COLORS: Record<VendorTransactionStatus, string> = {
-  CREATED: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200",
-  SECURITY_VERIFIED: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200",
-  PART_C_PARTIAL: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200",
-  COMPLETED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200",
-  ESCALATED: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200",
+  CREATED: "bg-blue-100 text-blue-800",
+  SECURITY_VERIFIED: "bg-amber-100 text-amber-800",
+  PART_C_PARTIAL: "bg-purple-100 text-purple-800",
+  COMPLETED: "bg-emerald-100 text-emerald-800",
+  ESCALATED: "bg-orange-100 text-orange-800",
 };
 
