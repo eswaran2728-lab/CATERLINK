@@ -35,20 +35,34 @@ export async function mintQrToken(params: {
     throw new Error("Could not reach VECTA to mint the QR pass. Check your connection and try again.");
   }
 
-  if (!res.ok) {
-    let message = `VECTA QR mint failed (HTTP ${res.status})`;
-    try {
-      const body = (await res.json()) as { error?: string };
-      if (body?.error) message = body.error;
-    } catch {
-      // response body wasn't JSON — keep the generic message
-    }
-    throw new Error(message);
+  const contentType = res.headers.get("content-type") ?? "";
+  const rawBody = await res.text();
+
+  if (!contentType.includes("application/json")) {
+    // A non-JSON response (almost always HTML) here — even on a 200 — is
+    // the signature of Vercel Deployment Protection intercepting the
+    // request with an auth-challenge page before it ever reaches VECTA's
+    // actual API route, not an application-level error.
+    throw new Error(
+      `VECTA returned a non-JSON response (HTTP ${res.status}) instead of the QR token. ` +
+        "This usually means Vercel Deployment Protection is enabled on VECTA's project and is blocking " +
+        "server-to-server calls with an authentication page. Ask whoever manages VECTA's Vercel project to " +
+        "either disable protection for /api/icms/qr/mint or issue a Protection Bypass for Automation secret."
+    );
   }
 
-  const data = (await res.json()) as { qrToken?: string };
-  if (!data.qrToken) {
+  let body: { error?: string; qrToken?: string };
+  try {
+    body = JSON.parse(rawBody);
+  } catch {
+    throw new Error(`VECTA returned malformed JSON (HTTP ${res.status}).`);
+  }
+
+  if (!res.ok) {
+    throw new Error(body.error ?? `VECTA QR mint failed (HTTP ${res.status})`);
+  }
+  if (!body.qrToken) {
     throw new Error("VECTA QR mint returned no token.");
   }
-  return data.qrToken;
+  return body.qrToken;
 }
