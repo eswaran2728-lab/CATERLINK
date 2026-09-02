@@ -37,17 +37,15 @@ export async function mintQrToken(params: {
 
   const contentType = res.headers.get("content-type") ?? "";
   const rawBody = await res.text();
+  // Keep enough of the raw body to diagnose the real cause (status code +
+  // a body snippet) rather than guessing at it — surfaced to the driver's
+  // error message so it can be copied verbatim when reporting the issue.
+  const snippet = rawBody.slice(0, 300);
 
   if (!contentType.includes("application/json")) {
-    // A non-JSON response (almost always HTML) here — even on a 200 — is
-    // the signature of Vercel Deployment Protection intercepting the
-    // request with an auth-challenge page before it ever reaches VECTA's
-    // actual API route, not an application-level error.
     throw new Error(
-      `VECTA returned a non-JSON response (HTTP ${res.status}) instead of the QR token. ` +
-        "This usually means Vercel Deployment Protection is enabled on VECTA's project and is blocking " +
-        "server-to-server calls with an authentication page. Ask whoever manages VECTA's Vercel project to " +
-        "either disable protection for /api/icms/qr/mint or issue a Protection Bypass for Automation secret."
+      `VECTA returned HTTP ${res.status} with content-type "${contentType || "none"}" instead of JSON. ` +
+        `Body: ${snippet}`
     );
   }
 
@@ -55,14 +53,14 @@ export async function mintQrToken(params: {
   try {
     body = JSON.parse(rawBody);
   } catch {
-    throw new Error(`VECTA returned malformed JSON (HTTP ${res.status}).`);
+    throw new Error(`VECTA returned HTTP ${res.status} with unparseable JSON. Body: ${snippet}`);
   }
 
   if (!res.ok) {
-    throw new Error(body.error ?? `VECTA QR mint failed (HTTP ${res.status})`);
+    throw new Error(`VECTA QR mint failed (HTTP ${res.status}): ${body.error ?? snippet}`);
   }
   if (!body.qrToken) {
-    throw new Error("VECTA QR mint returned no token.");
+    throw new Error(`VECTA QR mint returned no token (HTTP ${res.status}). Body: ${snippet}`);
   }
   return body.qrToken;
 }
