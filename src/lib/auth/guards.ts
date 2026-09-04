@@ -2,7 +2,8 @@ import "server-only";
 
 import { redirect } from "next/navigation";
 import { getAuthProvider } from "./provider";
-import type { AuthUser } from "./types";
+import { getClaims, type Claims } from "./claims";
+import type { AuthUser, AuthRole } from "./types";
 
 /** Provider-agnostic replacement for the Supabase SDK's getUser() call —
  *  identity only, returns null when signed out. Role/status still comes
@@ -20,14 +21,34 @@ export async function requireAuth(): Promise<AuthUser> {
 }
 
 /**
- * requireRole()/requireTeam() are deferred to Phase 2 (AUTH-CONTRACT.md):
- * AuthUser carries no role/vendor_id yet, so there is nothing
- * provider-agnostic to check here. lib/auth.ts's own requireRole()
- * remains the real guard until then.
+ * Returns the signed-in user's full claim contract (AUTH-CONTRACT.md), or
+ * redirects to /login. CaterLink's own driver/vendor roles aren't in the
+ * app_role vocabulary today (see AUTH-CONTRACT.md's caveat) — lib/auth.ts's
+ * own requireProfile()/requireRole() (which read current_user_role()
+ * directly) remain the real guard for CaterLink's own pages.
  */
-export function requireRole(): never {
-  throw new Error("requireRole() lands in Phase 2 once claims carry app_role.");
+export async function requireClaims(): Promise<Claims> {
+  const user = await requireAuth();
+  const claims = await getClaims(user);
+  if (!claims) redirect("/login?error=no-profile");
+  return claims;
 }
+
+/** Requires one of the given coarse app_role values (unified_role
+ *  vocabulary). Not useful for CaterLink's own warehouse_pic/vendor
+ *  distinction today — see the caveat above — but available for any
+ *  future check against the shared AVSEC vocabulary (e.g. rejecting an
+ *  AVSEC-only account from a CaterLink-only page). */
+export async function requireAppRole(roles: AuthRole[]): Promise<Claims> {
+  const claims = await requireClaims();
+  if (!claims.appRole || !roles.includes(claims.appRole)) {
+    redirect("/dashboard?error=forbidden");
+  }
+  return claims;
+}
+
+/** CaterLink accounts never carry a team claim (VECTA-only) — always
+ *  redirects. Kept for interface parity with VECTA's guards.ts. */
 export function requireTeam(): never {
-  throw new Error("requireTeam() lands in Phase 2 once claims carry team/station.");
+  throw new Error("CaterLink accounts have no team claim — this is a VECTA-only concept.");
 }
