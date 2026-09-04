@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthProvider } from "@/lib/auth/provider";
 import { requireRole } from "@/lib/auth";
 import { uploadDataUrl } from "@/lib/storage";
 import { mintQrToken } from "@/lib/vecta-api";
@@ -194,15 +195,13 @@ export async function createTransaction(_prev: ActionState, formData: FormData):
     return { error: `Part A could not be saved: ${partAError.message}` };
   }
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) {
+  const accessToken = await getAuthProvider().getAccessToken();
+  if (!accessToken) {
     return { error: "Session expired — please sign in again before creating a transaction." };
   }
 
   try {
-    const qrToken = await mintQrToken({ transactionId: tx.id, type: "CATERING", accessToken: session.access_token });
+    const qrToken = await mintQrToken({ transactionId: tx.id, type: "CATERING", accessToken });
     const { error: qrError } = await supabase.rpc("set_transaction_qr_token", {
       p_transaction_id: tx.id,
       p_qr_token: qrToken,

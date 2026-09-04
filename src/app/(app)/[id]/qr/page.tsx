@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthProvider } from "@/lib/auth/provider";
 import { mintQrToken } from "@/lib/vecta-api";
 import { QrDisplay } from "@/components/qr-display";
 import { Button } from "@/components/ui/button";
@@ -29,15 +30,13 @@ export default async function QrPassPage({ params }: { params: Promise<{ id: str
   if (!qrToken) {
     // Creation-time mint can fail transiently (VECTA unreachable) — retry
     // on view instead of leaving the driver stuck with no QR pass at all.
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (session) {
+    const accessToken = await getAuthProvider().getAccessToken();
+    if (accessToken) {
       try {
         qrToken = await mintQrToken({
           transactionId: record.id,
           type: isVendor ? "VENDOR" : "CATERING",
-          accessToken: session.access_token,
+          accessToken,
         });
       } catch {
         qrToken = null;
