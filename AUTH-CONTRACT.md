@@ -64,11 +64,53 @@ where the checkpoint tables live. Neither file was executed in the
 environment that wrote them (no local Postgres/Supabase CLI available);
 run `supabase test db` before relying on the assertions.
 
-## Next: Phase 3
+## Phase 3 status
 
-Phase 3 wires Firebase Auth (Google Workspace sign-in) and
-`/api/auth/sync-claims` (built in VECTA), which will actually set these
-claims as Firebase custom claims per this contract, and register Firebase
-with Supabase's Third-Party Auth so `auth.jwt()` on a Firebase-issued
-token resolves the same way it does today for a Supabase-issued one —
-this repo's `lib/auth/providers/firebase.ts` stub gets implemented then.
+Confirmed with the user: IFC drivers and third-party vendor drivers **do**
+all have AirAsia Workspace accounts, so this repo gets the same Firebase
+build-out as VECTA — not deferred as originally flagged.
+
+Built and verified (type-check, lint, full test suite, production build,
+boundary script all pass):
+
+- `src/lib/auth/providers/firebase-admin.ts` / `firebase-client.ts` /
+  `firebase.ts` — same shape as VECTA's: session-cookie based
+  `getUser()`/`getSession()`, a separate ID-token cookie for
+  `getAccessToken()`, `signOut()` that revokes refresh tokens. Same
+  Firebase project (`airasia-avsec-auth`) as VECTA, its own service
+  account key env var (same JSON value, set again since env vars don't
+  cross Vercel projects).
+- **One real difference from VECTA:** this app has no
+  `public.profiles`/`users` write path of its own to sync claims from, so
+  `components/auth/GoogleSignInButton.tsx` calls VECTA's
+  `/api/auth/sync-claims` **cross-origin** (`NEXT_PUBLIC_VECTA_API_BASE_URL`)
+  rather than hosting a second copy — `public.user_claims`/
+  `setCustomUserClaims()` should have exactly one caller across both apps.
+  VECTA's route now has CORS scoped to exactly `CATERLINK_APP_URL`, never
+  a wildcard, since it's a token-bearing endpoint.
+- `src/lib/supabase/server.ts` / `client.ts` — same `AUTH_PROVIDER`
+  branch as VECTA, building the Supabase client with the `accessToken`
+  option in Firebase mode.
+- `src/middleware.ts` — same Edge-runtime limitation as VECTA's (Firebase
+  Admin SDK's session verification needs Node.js); `AUTH_PROVIDER=firebase`
+  passes requests through untouched. Not a regression here specifically —
+  this middleware never did anything beyond session refresh; all real
+  enforcement is `lib/auth.ts`'s `requireProfile()`/`requireRole()` and
+  RLS.
+- `src/app/login/page.tsx` branches on `AUTH_PROVIDER`: unset/`supabase`
+  keeps today's form (and vendor self-registration link) unchanged;
+  `firebase` renders `GoogleSignInButton`.
+
+**Left open, worth deciding before Phase 4:** vendor self-registration
+(`src/app/register`, email/password via `src/lib/actions/registration.ts`)
+still exists and is unaffected by any of this. Once Workspace-only sign-in
+is enforced, does that path close (Workspace accounts are normally
+IT-provisioned, not self-registered), or does it stay for some vendor
+population that turns out not to have Workspace accounts after all despite
+the confirmation above? Not decided or built either way here.
+
+**Still needed before this is live:** the same Supabase Dashboard
+Third-Party Auth registration VECTA's `AUTH-CONTRACT.md` describes (one
+registration covers both apps — same Supabase project), the env vars from
+`.env.example` set in this app's own Vercel project, and end-to-end
+testing on a preview before trusting any of it.

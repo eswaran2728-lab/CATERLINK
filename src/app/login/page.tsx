@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { LoginForm } from "./login-form";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 
 export const metadata: Metadata = { title: "Sign in — CaterLink" };
 export const dynamic = "force-dynamic";
@@ -59,7 +60,7 @@ export default async function LoginPage({
           </p>
         ) : null}
 
-        <LoginForm />
+        {process.env.AUTH_PROVIDER === "firebase" ? <GoogleSignInButton /> : <LoginForm />}
 
         <p className="mt-5 text-center text-[12.5px] text-muted-foreground">
           New vendor driver?{" "}
