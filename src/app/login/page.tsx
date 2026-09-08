@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { LoginForm } from "./login-form";
@@ -10,6 +10,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   "no-profile": "Your account is not set up yet. Contact your administrator.",
   pending: "Your registration is awaiting approval from a VECTA admin.",
   rejected: "Your registration was not approved. Contact your administrator.",
+  "vecta-only": "This account is provisioned for AirAsia AVSEC operations in VECTA. Please sign in to the VECTA portal.",
+  "auth-code-error": "Google authentication failed or expired. Please try signing in again.",
 };
 
 export default async function LoginPage({
@@ -45,7 +47,7 @@ export default async function LoginPage({
           <div className="relative text-center">
             <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">CaterLink</h1>
             <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Driver Movement
+              Driver Movement & Catering Dispatch
             </p>
           </div>
         </div>
